@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import math
+import cfgs
+
 
 def read_class_names(class_file_name):
     '''loads class name from a file'''
@@ -9,6 +11,7 @@ def read_class_names(class_file_name):
         for ID, name in enumerate(data):
             names[ID] = name.strip('\n')
     return names
+
 
 def py_nms(boxes, scores, max_boxes=80, iou_thresh=0.5):
     """
@@ -49,21 +52,26 @@ def py_nms(boxes, scores, max_boxes=80, iou_thresh=0.5):
 
     return keep[:max_boxes]
 
-def image_preporcess(image, target_size, gt_boxes=None):
 
+def image_preprocess(image, target_size, gt_boxes=None):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
 
-    ih, iw    = target_size
-    h,  w, _  = image.shape
+    ih, iw = target_size
+    h, w, _ = image.shape
 
-    scale = min(iw/w, ih/h)
-    nw, nh  = int(scale * w), int(scale * h)
+    scale = min(iw / w, ih / h)
+    nw, nh = int(scale * w), int(scale * h)
     image_resized = cv2.resize(image, (nw, nh))
 
-    image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0, dtype=np.float32)
-    dw, dh = (iw - nw) // 2, (ih-nh) // 2
-    image_paded[dh:nh+dh, dw:nw+dw, :] = image_resized
+    # image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0, dtype=np.float32)
+    means = np.array(cfgs.USED_MEANS, np.float32).reshape((1, 1, 3))
+    std = np.array(cfgs.USED_STD, np.float32).reshape((1, 1, 3))
+    image_paded = np.ones((ih, iw, 3), dtype=np.float32)
+    image_paded = image_paded * means * 255
+    dw, dh = (iw - nw) // 2, (ih - nh) // 2
+    image_paded[dh: nh + dh, dw: nw + dw, :] = image_resized
     image_paded = image_paded / 255.
+    image_paded = ((image_paded - means) / std).astype(np.float32)
 
     if gt_boxes is None:
         return image_paded
@@ -72,6 +80,7 @@ def image_preporcess(image, target_size, gt_boxes=None):
         gt_boxes[:, [0, 2]] = gt_boxes[:, [0, 2]] * scale + dw
         gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
         return image_paded, gt_boxes
+
 
 def post_process(detections, org_img_shape, input_size, down_ratio, score_threshold):
     bboxes = detections[0, :, 0:4]
@@ -94,10 +103,10 @@ def post_process(detections, org_img_shape, input_size, down_ratio, score_thresh
 
 def bboxes_draw_on_img(img, classes_id, scores, bboxes, class_names, thickness=2):
     colors_tableau = [(158, 218, 229), (31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),
-                 (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),
-                 (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
-                 (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
-                 (188, 189, 34), (219, 219, 141), (23, 190, 207)]
+                      (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),
+                      (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
+                      (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
+                      (188, 189, 34), (219, 219, 141), (23, 190, 207)]
     scale = 0.4
     text_thickness = 1
     line_type = 8
@@ -117,8 +126,10 @@ def bboxes_draw_on_img(img, classes_id, scores, bboxes, class_names, thickness=2
         text_size, baseline = cv2.getTextSize(s, cv2.FONT_HERSHEY_SIMPLEX, scale, text_thickness)
         p1 = (y1_src - text_size[1], x1_src)
 
-        cv2.rectangle(img, (p1[1] - thickness//2, p1[0] - thickness - baseline), (p1[1] + text_size[0], p1[0] + text_size[1]), color, -1)
+        cv2.rectangle(img, (p1[1] - thickness // 2, p1[0] - thickness - baseline),
+                      (p1[1] + text_size[0], p1[0] + text_size[1]), color, -1)
 
-        cv2.putText(img, s, (p1[1], p1[0] + baseline), cv2.FONT_HERSHEY_SIMPLEX, scale, (255,255,255), text_thickness, line_type)
+        cv2.putText(img, s, (p1[1], p1[0] + baseline), cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), text_thickness,
+                    line_type)
 
     return img
