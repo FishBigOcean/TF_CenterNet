@@ -78,7 +78,7 @@ def random_color_distort(img, brightness_delta=32, hue_vari=18, sat_vari=0.5, va
 
     def random_value(img_hsv, val_vari, p=0.5):
         if np.random.uniform(0, 1) > p:
-            val_mult = 1 + np.random.uniform(-val_vari, val_vari)
+            val_mult = 1 + np.random.uniform(- 0.6 * val_vari, 1.2 * val_vari)
             img_hsv[:, :, 2] *= val_mult
         return img_hsv
 

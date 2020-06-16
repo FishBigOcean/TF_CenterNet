@@ -21,9 +21,10 @@ def process_data(line, use_aug):
     labels = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in s[1:]])
 
     if use_aug:
-        # image, labels = random_horizontal_flip(image, labels) # 输入数据已经翻转过了
+        image, labels = random_horizontal_flip(image, labels)
         image, labels = random_crop(image, labels)
         image, labels = random_translate(image, labels)
+        image = random_color_distort(image)
     image, labels = image_preprocess(np.copy(image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], np.copy(labels))
 
     output_h = cfgs.INPUT_IMAGE_H // cfgs.DOWN_RATIO
@@ -35,18 +36,19 @@ def process_data(line, use_aug):
     ind = np.zeros((cfgs.MAX_OBJ), dtype=np.float32)
 
     for idx, label in enumerate(labels):
-        bbox = label[:4] / cfgs.DOWN_RATIO
-        class_id = label[4]
-        h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
-        radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-        radius = max(0, int(radius))
-        ct = np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
-        ct_int = ct.astype(np.int32)
-        draw_umich_gaussian(hm[:, :, class_id], ct_int, radius)
-        wh[idx] = 1. * w, 1. * h
-        reg[idx] = ct - ct_int
-        reg_mask[idx] = 1
-        ind[idx] = ct_int[1] * output_w + ct_int[0]
+        if label[-1] >= 0:
+            bbox = label[:4] / cfgs.DOWN_RATIO
+            class_id = label[4]
+            h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
+            radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+            radius = max(0, int(radius))
+            ct = np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
+            ct_int = ct.astype(np.int32)
+            draw_umich_gaussian(hm[:, :, class_id], ct_int, radius)
+            wh[idx] = 1. * w, 1. * h
+            reg[idx] = ct - ct_int
+            reg_mask[idx] = 1
+            ind[idx] = ct_int[1] * output_w + ct_int[0]
 
     return image, hm, wh, reg, reg_mask, ind
 

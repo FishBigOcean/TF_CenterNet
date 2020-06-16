@@ -12,7 +12,7 @@ from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_i
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 # cpu_num = 1
 # config = tf.ConfigProto(device_count={"CPU": cpu_num}, # limit to num_cpu_core CPU usage
 #                 inter_op_parallelism_threads = cpu_num,
@@ -32,10 +32,20 @@ wh = model.pred_wh
 reg = model.pred_reg
 det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
 
+
 class_names = read_class_names(cfgs.CLASS_FILE)
-img_names = os.listdir('D:/dataset/hand_network')
-for img_name in img_names:
-    img_path = 'D:/dataset/hand_network/' + img_name
+
+with open('./data/dataset/hand_test_new.txt', 'r') as f_read:
+    txt_lines = f_read.readlines()
+for txt_line in txt_lines:
+    img_path = txt_line.split(' ')[0]
+    img_point = txt_line.split(' ')[1:]
+
+
+# img_names = os.listdir('D:/dataset/hand_network')
+# for img_name in img_names:
+#     img_path = 'D:/dataset/hand_network/' + img_name
+
     original_image = cv2.imread(img_path)
     original_image_size = original_image.shape[:2]
     image_data = image_preprocess(np.copy(original_image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W])
@@ -43,9 +53,9 @@ for img_name in img_names:
 
     t0 = time.time()
     detections = sess.run(det, feed_dict={inputs: image_data})
+    print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
     detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], cfgs.DOWN_RATIO,
                               cfgs.SCORE_THRESHOLD)
-    print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
     if cfgs.USE_NMS:
         cls_in_img = list(set(detections[:, 5]))
         results = []

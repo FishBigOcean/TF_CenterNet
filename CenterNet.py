@@ -37,21 +37,6 @@ class CenterNet():
 
             features = _conv(p2, 128, [3, 3], is_training=self.is_training)
 
-            # IDA-up
-            # p2 = _conv(c2, 128, [1,1], is_training=self.is_training)
-            # p3 = _conv(c3, 128, [1,1], is_training=self.is_training)
-            # p4 = _conv(c4, 128, [1,1], is_training=self.is_training)
-            # p5 = _conv(c5, 128, [1,1], is_training=self.is_training)
-
-            # up_p3 = upsampling(p3, method='resize')
-            # p2 = _conv(p2+up_p3, 128, [3,3], is_training=self.is_training)
-
-            # up_p4 = upsampling(upsampling(p4, method='resize'), method='resize')
-            # p2 = _conv(p2+up_p4, 128, [3,3], is_training=self.is_training)
-
-            # up_p5 = upsampling(upsampling(upsampling(p5, method='resize'), method='resize'), method='resize')
-            # features = _conv(p2+up_p5, 128, [3,3], is_training=self.is_training)
-
         with tf.variable_scope('detector'):
             hm = _conv(features, 64, [3, 3], is_training=self.is_training)
             hm = tf.layers.conv2d(hm, cfgs.NUM_CLASS, 1, 1, padding='valid', activation=tf.nn.sigmoid,

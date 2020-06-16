@@ -1,5 +1,17 @@
 import tensorflow as tf
 
+# # 目标的高斯分布，表示目标的中心点
+# batch_hm = np.zeros(
+#     (cfgs.BATCH_SIZE, cfgs.INPUT_IMAGE_H // cfgs.DOWN_RATIO, cfgs.INPUT_IMAGE_W // cfgs.DOWN_RATIO, cfgs.NUM_CLASS),
+#     dtype=np.float32)
+# # 目标的高度和宽度
+# batch_wh = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ, 2), dtype=np.float32)
+# # 目标中心整数化时的量化误差
+# batch_reg = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ, 2), dtype=np.float32)
+# # 1有目标 0没有目标
+# batch_reg_mask = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ), dtype=np.float32)
+# # 目标关键点在2D heatmap中对应的1D heatmap的索引
+# batch_ind = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ), dtype=np.float32)
 
 def focal_loss(hm_pred, hm_true):
     pos_mask = tf.cast(tf.equal(hm_true, 1.), dtype=tf.float32)
@@ -26,7 +38,26 @@ def reg_l1_loss(y_pred, y_true, indices, mask):
     y_pred = tf.batch_gather(y_pred, indices)
     mask = tf.tile(tf.expand_dims(mask, axis=-1), (1, 1, 2))
     total_loss = tf.reduce_sum(tf.abs(y_true * mask - y_pred * mask))
-    loss = total_loss / (tf.reduce_sum(mask) + 1e-5)
+    loss = total_loss * 2 / (tf.reduce_sum(mask) + 1e-5)
+    return loss
+
+
+def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=1.0):
+    b = tf.shape(y_pred)[0]
+    k = tf.shape(indices)[1]
+    c = tf.shape(y_pred)[-1]
+    y_pred = tf.reshape(y_pred, (b, -1, c))
+    indices = tf.cast(indices, tf.int32)
+    y_pred = tf.batch_gather(y_pred, indices)
+    mask = tf.tile(tf.expand_dims(mask, axis=-1), (1, 1, 2))
+    sigma_2 = sigma ** 2
+    box_diff = y_pred * mask - y_true * mask
+    abs_box_diff = tf.abs(box_diff)
+    smoothL1_sign = tf.stop_gradient(tf.to_float(tf.less(abs_box_diff, 1. / sigma_2)))
+    loss_box = tf.pow(box_diff, 2) * (sigma_2 / 2.0) * smoothL1_sign + (abs_box_diff - (0.5 / sigma_2)) * (
+                1.0 - smoothL1_sign)
+    total_loss = tf.reduce_sum(loss_box)
+    loss = total_loss * 2 / (tf.reduce_sum(mask) + 1e-5)
     return loss
 
 
