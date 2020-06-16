@@ -30,7 +30,7 @@ def py_nms(boxes, scores, max_boxes=80, iou_thresh=0.5):
     x2 = boxes[:, 2]
     y2 = boxes[:, 3]
 
-    areas = (x2 - x1) * (y2 - y1)
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     order = scores.argsort()[::-1]
 
     keep = []
@@ -51,6 +51,22 @@ def py_nms(boxes, scores, max_boxes=80, iou_thresh=0.5):
         order = order[inds + 1]
 
     return keep[:max_boxes]
+
+
+def cal_iou(box1, box2):
+    b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[2], box1[3]
+    b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[2], box2[3]
+    area1 = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
+    arae2 = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
+    xx1 = max(b1_x1, b2_x1)
+    xx2 = min(b1_x2, b2_x2)
+    yy1 = max(b1_y1, b2_y1)
+    yy2 = min(b1_y2, b2_y2)
+    w = max(0.0, xx2 - xx1 + 1)
+    h = max(0.0, yy2 - yy1 + 1)
+    inter = w * h
+    iou = inter / (area1 + arae2 - inter)
+    return iou
 
 
 def image_preprocess(image, target_size, gt_boxes=None):

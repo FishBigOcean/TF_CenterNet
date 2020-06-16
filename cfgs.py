@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 
 # version
-VERSION = 'test_4_ori'
+VERSION = 'v1.2_test'
 
 # dataset
 ALL_MEANS = [0.471, 0.443, 0.425]
@@ -19,13 +19,14 @@ DOWN_RATIO = 4
 MAX_OBJ = 10
 
 # train
-TRAIN_DATA_FILE = './data/dataset/hand_train_new.txt'
+TRAIN_DATA_FILE = './data/dataset/hand_train.txt'
 BATCH_SIZE = 16
 EPOCHS = 70
 MAX_KEEP = 10
 SAVE_MIN = True
 WEIGHT_REGULARIZER = tf.contrib.layers.l2_regularizer(0.0005)
 BN_MOMENTUM = 0.99
+MBV3_SHRINK = 1
 # learning rate
 LR_TPYE = "piecewise"  # "exponential","piecewise","CosineAnnealing"
 LR = 1e-3  # exponential
@@ -39,14 +40,17 @@ END_LR = 1e-6  # CosineAnnealing
 PRE_TRAIN = False
 USE_AUG = True
 # loss weight
+HM_POS_WEIGHT = 1
+HM_NEG_WEIGHT = 1
 HM_LOSS_WEIGHT = 1
 WH_LOSS_WEIGHT = 0.1
 REG_LOSS_WEIGHT = 1
-SIGMA = 1.0
+SIGMA = 10
 
 # test
-TEST_DATA_FILE = './data/dataset/hand_test_new.txt'
-SCORE_THRESHOLD = 0.2
+TEST_DATA_FILE = './data/dataset/hand_test.txt'
+SCORE_THRESHOLD = 0.4
 USE_NMS = True
 NMS_THRESH = 0.5
 SHOW_NUM = 1
+VAL_IOU_THRESH = 0.6

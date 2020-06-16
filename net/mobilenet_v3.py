@@ -121,7 +121,7 @@ def mobilenet_v3_block(input, k_s, expansion_ratio, output_dim, stride, name, is
 
     with tf.variable_scope(name, reuse=reuse):
         # pw mobilenetV2
-        net = _conv_1x1_bn(input, bottleneck_dim, name="pw", use_bias=use_bias, is_training=is_training)
+        net = _conv_1x1_bn(input, bottleneck_dim, name="pw", use_bias=False, is_training=is_training)
 
         if activatation == "HS":
             net = hard_swish(net)
@@ -159,7 +159,7 @@ def mobilenet_v3_block(input, k_s, expansion_ratio, output_dim, stride, name, is
     return net
 
 
-def mobilenet_v3_small(inputs, multiplier=1.0, is_training=False, reuse=None):
+def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, reuse=None):
     end_points = {}
     layers = [
         # in_channels, out_channels, kernel_size, stride, activatation, se, exp_size

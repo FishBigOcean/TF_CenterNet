@@ -1,4 +1,5 @@
 import tensorflow as tf
+import cfgs
 
 # # 目标的高斯分布，表示目标的中心点
 # batch_hm = np.zeros(
@@ -22,8 +23,8 @@ def focal_loss(hm_pred, hm_true):
     neg_loss = -tf.log(tf.clip_by_value(1. - hm_pred, 1e-5, 1. - 1e-5)) * tf.pow(hm_pred, 2.0) * neg_weights * neg_mask
 
     num_pos = tf.reduce_sum(pos_mask)
-    pos_loss = tf.reduce_sum(pos_loss)
-    neg_loss = tf.reduce_sum(neg_loss)
+    pos_loss = tf.reduce_sum(pos_loss) * cfgs.HM_POS_WEIGHT
+    neg_loss = tf.reduce_sum(neg_loss) * cfgs.HM_NEG_WEIGHT
 
     loss = tf.cond(tf.greater(num_pos, 0), lambda: (pos_loss + neg_loss) / num_pos, lambda: neg_loss)
     return loss
@@ -42,7 +43,7 @@ def reg_l1_loss(y_pred, y_true, indices, mask):
     return loss
 
 
-def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=1.0):
+def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=cfgs.SIGMA):
     b = tf.shape(y_pred)[0]
     k = tf.shape(indices)[1]
     c = tf.shape(y_pred)[-1]
