@@ -23,8 +23,7 @@ elif mode == 3:
     cpu_num = 1
     config = tf.ConfigProto(device_count={"CPU": cpu_num},  # limit to num_cpu_core CPU usage
                             inter_op_parallelism_threads=cpu_num,
-                            intra_op_parallelism_threads=cpu_num,
-                            log_device_placement=True)
+                            intra_op_parallelism_threads=cpu_num)
     sess = tf.Session(config=config)
 
 inputs = tf.placeholder(shape=[None, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
@@ -39,15 +38,15 @@ det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
-with open('./data/dataset/hand_test_new.txt', 'r') as f_read:
+with open('./data/dataset/hand_test.txt', 'r') as f_read:
     txt_lines = f_read.readlines()
 for txt_line in txt_lines:
     img_path = txt_line.split(' ')[0]
     img_point = txt_line.split(' ')[1:]
 
-    # img_names = os.listdir('D:/dataset/hand_network')
-    # for img_name in img_names:
-    #     img_path = 'D:/dataset/hand_network/' + img_name
+# img_names = os.listdir('D:/dataset/hand_network')
+# for img_name in img_names:
+#     img_path = 'D:/dataset/hand_network/' + img_name
 
     original_image = cv2.imread(img_path)
     original_image_size = original_image.shape[:2]

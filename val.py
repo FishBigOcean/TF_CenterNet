@@ -11,16 +11,20 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names, cal_iou
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
+mode = 3  # 1 GPU 2 CPU 3 single-CPU
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-# cpu_num = 1
-# config = tf.ConfigProto(device_count={"CPU": cpu_num}, # limit to num_cpu_core CPU usage
-#                 inter_op_parallelism_threads = cpu_num,
-#                 intra_op_parallelism_threads = cpu_num,
-#                 log_device_placement=True)
-# sess = tf.Session(config=config)
-
-sess = tf.Session()
+if mode == 1:
+    sess = tf.Session()
+elif mode == 2:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    sess = tf.Session()
+elif mode == 3:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    cpu_num = 1
+    config = tf.ConfigProto(device_count={"CPU": cpu_num},  # limit to num_cpu_core CPU usage
+                            inter_op_parallelism_threads=cpu_num,
+                            intra_op_parallelism_threads=cpu_num)
+    sess = tf.Session(config=config)
 
 inputs = tf.placeholder(shape=[None, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
 model = CenterNet(inputs, False)
@@ -35,7 +39,7 @@ det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
-with open('./data/dataset/hand_test_new.txt', 'r') as f_read:
+with open('./data/dataset/hand_test.txt', 'r') as f_read:
     txt_lines = f_read.readlines()
 
 all_num = len(txt_lines)

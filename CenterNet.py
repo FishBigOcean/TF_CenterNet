@@ -21,31 +21,31 @@ class CenterNet():
             # mobilenet v3
             c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
 
-            p5 = _conv(c5, 48, [1, 1], is_training=self.is_training)
+            p5 = _conv(c5, 8, [1, 1], is_training=self.is_training)
 
             up_p5 = upsampling(p5, method='resize')
-            reduce_dim_c4 = _conv(c4, 48, [1, 1], is_training=self.is_training)
-            p4 = 0.5 * up_p5 + 0.5 * reduce_dim_c4
+            reduce_dim_c4 = _conv(c4, 8, [1, 1], is_training=self.is_training)
+            p4 = tf.concat([up_p5, reduce_dim_c4], axis=-1)
 
             up_p4 = upsampling(p4, method='resize')
-            reduce_dim_c3 = _conv(c3, 48, [1, 1], is_training=self.is_training)
-            p3 = 0.5 * up_p4 + 0.5 * reduce_dim_c3
+            reduce_dim_c3 = _conv(c3, 8, [1, 1], is_training=self.is_training)
+            p3 = tf.concat([up_p4, reduce_dim_c3], axis=-1)
 
             up_p3 = upsampling(p3, method='resize')
-            reduce_dim_c2 = _conv(c2, 48, [1, 1], is_training=self.is_training)
-            p2 = 0.5 * up_p3 + 0.5 * reduce_dim_c2
+            reduce_dim_c2 = _conv(c2, 8, [1, 1], is_training=self.is_training)
+            p2 = tf.concat([up_p3, reduce_dim_c2], axis=-1)
 
-            features = _conv(p2, 48, [3, 3], is_training=self.is_training)
+            features = _conv(p2, 24, [3, 3], is_training=self.is_training)
 
         with tf.variable_scope('detector'):
-            hm = _conv(features, 48, [3, 3], is_training=self.is_training)
+            hm = _conv(features, 24, [3, 3], is_training=self.is_training)
             hm = tf.layers.conv2d(hm, cfgs.NUM_CLASS, 1, 1, padding='valid', activation=tf.nn.sigmoid,
                                   bias_initializer=tf.constant_initializer(-np.log(99.)), name='hm')
 
-            wh = _conv(features, 48, [3, 3], is_training=self.is_training)
+            wh = _conv(features, 24, [3, 3], is_training=self.is_training)
             wh = tf.layers.conv2d(wh, 2, 1, 1, padding='valid', activation=None, name='wh')
 
-            reg = _conv(features, 48, [3, 3], is_training=self.is_training)
+            reg = _conv(features, 24, [3, 3], is_training=self.is_training)
             reg = tf.layers.conv2d(reg, 2, 1, 1, padding='valid', activation=None, name='reg')
 
         return hm, wh, reg

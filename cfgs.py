@@ -13,20 +13,20 @@ USED_STD = [0.250, 0.253, 0.245]
 # common
 CLASS_FILE = './data/classes/hand_name.txt'
 NUM_CLASS = 3
-INPUT_IMAGE_H = 352  # 448 384  352
-INPUT_IMAGE_W = 352  # 448 384  352
+INPUT_IMAGE_H = 288  # 448 352 288
+INPUT_IMAGE_W = 288  # 448 352 288
 DOWN_RATIO = 4
 MAX_OBJ = 10
 
 # train
 TRAIN_DATA_FILE = './data/dataset/hand_train.txt'
 BATCH_SIZE = 16
-EPOCHS = 70
+EPOCHS = 100
 MAX_KEEP = 10
 SAVE_MIN = True
 WEIGHT_REGULARIZER = tf.contrib.layers.l2_regularizer(0.0005)
 BN_MOMENTUM = 0.99
-MBV3_SHRINK = 1
+MBV3_SHRINK = 0.8
 # learning rate
 LR_TPYE = "piecewise"  # "exponential","piecewise","CosineAnnealing"
 LR = 1e-3  # exponential
@@ -40,7 +40,7 @@ END_LR = 1e-6  # CosineAnnealing
 PRE_TRAIN = False
 USE_AUG = True
 # loss weight
-HM_POS_WEIGHT = 1
+HM_POS_WEIGHT = 2
 HM_NEG_WEIGHT = 1
 HM_LOSS_WEIGHT = 1
 WH_LOSS_WEIGHT = 0.1
@@ -49,7 +49,7 @@ SIGMA = 10
 
 # test
 TEST_DATA_FILE = './data/dataset/hand_test.txt'
-SCORE_THRESHOLD = 0.4
+SCORE_THRESHOLD = 0.2
 USE_NMS = True
 NMS_THRESH = 0.5
 SHOW_NUM = 1
