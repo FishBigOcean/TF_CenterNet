@@ -21,19 +21,19 @@ class CenterNet():
             # mobilenet v3
             c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
 
-            p5 = _conv(c5, 8, [1, 1], is_training=self.is_training)
+            p5 = _conv(c5, 24, [1, 1], is_training=self.is_training)
 
             up_p5 = upsampling(p5, method='resize')
-            reduce_dim_c4 = _conv(c4, 8, [1, 1], is_training=self.is_training)
-            p4 = tf.concat([up_p5, reduce_dim_c4], axis=-1)
+            reduce_dim_c4 = _conv(c4, 24, [1, 1], is_training=self.is_training)
+            p4 = 0.5 * up_p5 + 0.5 * reduce_dim_c4
 
             up_p4 = upsampling(p4, method='resize')
-            reduce_dim_c3 = _conv(c3, 8, [1, 1], is_training=self.is_training)
-            p3 = tf.concat([up_p4, reduce_dim_c3], axis=-1)
+            reduce_dim_c3 = _conv(c3, 24, [1, 1], is_training=self.is_training)
+            p3 = 0.5 * up_p4 + 0.5 * reduce_dim_c3
 
             up_p3 = upsampling(p3, method='resize')
-            reduce_dim_c2 = _conv(c2, 8, [1, 1], is_training=self.is_training)
-            p2 = tf.concat([up_p3, reduce_dim_c2], axis=-1)
+            reduce_dim_c2 = _conv(c2, 24, [1, 1], is_training=self.is_training)
+            p2 = 0.5 * up_p3 + 0.5 * reduce_dim_c2
 
             features = _conv(p2, 24, [3, 3], is_training=self.is_training)
 

@@ -2,13 +2,11 @@ import os
 import tensorflow as tf
 
 # version
-VERSION = 'v1.2_test'
+VERSION = 'v1.4_test'
 
 # dataset
-ALL_MEANS = [0.471, 0.443, 0.425]
-ALL_STD = [0.251, 0.254, 0.247]
-USED_MEANS = [0.471, 0.443,  0.425]
-USED_STD = [0.250, 0.253, 0.245]
+USED_MEANS = [0.490, 0.451, 0.429]
+USED_STD = [0.251, 0.249, 0.242]
 
 # common
 CLASS_FILE = './data/classes/hand_name.txt'
@@ -19,21 +17,22 @@ DOWN_RATIO = 4
 MAX_OBJ = 10
 
 # train
-TRAIN_DATA_FILE = './data/dataset/hand_train.txt'
+TRAIN_DATA_FILE = './data/dataset/train-v3.txt'
 BATCH_SIZE = 16
-EPOCHS = 100
+EPOCHS = 40
 MAX_KEEP = 10
 SAVE_MIN = True
+WEIGHT_INITIALIZER = tf.variance_scaling_initializer(2, 'fan_avg', 'truncated_normal')
 WEIGHT_REGULARIZER = tf.contrib.layers.l2_regularizer(0.0005)
 BN_MOMENTUM = 0.99
-MBV3_SHRINK = 0.8
+MBV3_SHRINK = 0.75
 # learning rate
 LR_TPYE = "piecewise"  # "exponential","piecewise","CosineAnnealing"
 LR = 1e-3  # exponential
 LR_DECAY_STEPS = 5000  # exponential
 LR_DECAY_RATE = 0.95  # exponential
-LR_BOUNDARIES = [40000, 60000]  # piecewise
-LR_PIECEWISE = [0.0001, 0.00001, 0.000001]  # piecewise
+LR_BOUNDARIES = [40000, 50000]  # piecewise
+LR_PIECEWISE = [0.001, 0.0003, 0.0001]  # piecewise
 WARM_UP_EPOCHS = 2  # CosineAnnealing
 INIT_LR = 1e-4  # CosineAnnealing
 END_LR = 1e-6  # CosineAnnealing
@@ -48,8 +47,8 @@ REG_LOSS_WEIGHT = 1
 SIGMA = 10
 
 # test
-TEST_DATA_FILE = './data/dataset/hand_test.txt'
-SCORE_THRESHOLD = 0.2
+TEST_DATA_FILE = './data/dataset/test-v3.txt'
+SCORE_THRESHOLD = 0.6
 USE_NMS = True
 NMS_THRESH = 0.5
 SHOW_NUM = 1

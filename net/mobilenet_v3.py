@@ -34,7 +34,7 @@ def _batch_normalization_layer(inputs, momentum=cfgs.BN_MOMENTUM, epsilon=1e-3, 
 def _conv2d_layer(inputs, filters_num, kernel_size, name, use_bias=False, strides=1, reuse=None, padding="SAME"):
     conv = tf.layers.conv2d(
         inputs=inputs, filters=filters_num,
-        kernel_size=kernel_size, strides=[strides, strides], kernel_initializer=tf.glorot_uniform_initializer(),
+        kernel_size=kernel_size, strides=[strides, strides], kernel_initializer=cfgs.WEIGHT_INITIALIZER,
         padding=padding,  # ('SAME' if strides == 1 else 'VALID'),
         kernel_regularizer=cfgs.WEIGHT_REGULARIZER, use_bias=use_bias, name=name,
         reuse=reuse)
@@ -68,6 +68,8 @@ def _dwise_conv(inputs, k_h=3, k_w=3, depth_multiplier=1, strides=(1, 1),
                                       data_format='channels_last', dilation_rate=(1, 1),
                                       depth_multiplier=depth_multiplier, activation=None,
                                       use_bias=use_bias, name=name, reuse=reuse,
+                                      depthwise_initializer=cfgs.WEIGHT_INITIALIZER,
+                                      pointwise_initializer=cfgs.WEIGHT_INITIALIZER,
                                       depthwise_regularizer=cfgs.WEIGHT_REGULARIZER,
                                       pointwise_regularizer=cfgs.WEIGHT_REGULARIZER
                                       )
@@ -91,7 +93,8 @@ def hard_sigmoid(x, name='hard_sigmoid'):
 
 def _fully_connected_layer(inputs, units, name="fc", activation=None, use_bias=True, reuse=None):
     return tf.layers.dense(inputs, units, activation=activation, use_bias=use_bias,
-                           name=name, reuse=reuse, kernel_regularizer=cfgs.WEIGHT_REGULARIZER)
+                           kernel_initializer=cfgs.WEIGHT_INITIALIZER, name=name,
+                           reuse=reuse, kernel_regularizer=cfgs.WEIGHT_REGULARIZER)
 
 
 def _global_avg(inputs, pool_size, strides, padding='valid', name='global_avg'):
@@ -197,4 +200,62 @@ def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, r
                                    ratio=reduction_ratio, se=se)
             end_points["bneck{}".format(idx)] = x
 
+
     return end_points['bneck0'], end_points['bneck2'], end_points['bneck7'], end_points['bneck10']
+
+
+# def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, reuse=None):
+#     end_points = {}
+#     layers = [
+#         # in_channels, out_channels, kernel_size, stride, activatation, se, exp_size
+#         [16, 16, 3, 2, "RE", True, 16],  # 0  4
+#         [16, 24, 3, 2, "RE", False, 72],  # 1  8
+#         [24, 24, 3, 1, "RE", False, 88],  # 2  8
+#         [24, 40, 5, 2, "RE", True, 96],  # 3  16
+#         [40, 40, 5, 1, "RE", True, 240],  # 4  16
+#         [40, 40, 5, 1, "RE", True, 240],  # 5  16
+#         [40, 48, 5, 1, "HS", True, 120],  # 6  16
+#         [48, 48, 5, 1, "HS", True, 144],  # 7  16
+#         [48, 96, 5, 2, "HS", True, 288],  # 8  32
+#         [96, 96, 5, 1, "HS", True, 576],  # 9  32
+#         [96, 96, 5, 1, "HS", True, 576],  # 10 32
+#     ]
+#
+#     input_size = inputs.get_shape().as_list()[1:-1]
+#     assert ((input_size[0] % 32 == 0) and (input_size[1] % 32 == 0))
+#
+#     reduction_ratio = 4
+#     with tf.variable_scope('init', reuse=reuse):
+#         init_conv_out = _make_divisible(16 * multiplier)
+#         # why no bias: 如果卷积层之后是BN层，那么可以不用偏置参数，可以节省内存
+#         x = _conv_bn_relu(inputs, filters_num=init_conv_out, kernel_size=3, name='init',
+#                           use_bias=False, strides=2, is_training=is_training, activation=hard_swish)
+#
+#     with tf.variable_scope("MobilenetV3_small", reuse=reuse):
+#         for idx, (in_channels, out_channels, kernel_size, stride, activatation, se, exp_size) in enumerate(layers):
+#             in_channels = _make_divisible(in_channels * multiplier)
+#             out_channels = _make_divisible(out_channels * multiplier)
+#             exp_size = _make_divisible(exp_size * multiplier)
+#             x = mobilenet_v3_block(x, kernel_size, exp_size, out_channels, stride,
+#                                    "bneck{}".format(idx), is_training=is_training, use_bias=True,
+#                                    shortcut=(in_channels == out_channels), activatation=activatation,
+#                                    ratio=reduction_ratio, se=se)
+#             end_points["bneck{}".format(idx)] = x
+#
+#         conv1_in = _make_divisible(96 * multiplier)
+#         conv1_out = _make_divisible(96 * multiplier)
+#         x = _conv_bn_relu(x, filters_num=conv1_out, kernel_size=1, name="conv1_out",
+#                           use_bias=True, strides=1, is_training=is_training, activation=hard_swish)
+#
+#         x = _squeeze_excitation_layer(x, out_dim=conv1_out, ratio=reduction_ratio, layer_name="conv1_out",
+#                                      is_training=is_training, reuse=None)
+#         end_points["conv1_out_1x1"] = x
+#
+#         x = _global_avg(x, pool_size=x.get_shape()[1:-1], strides=1)
+#         #x = hard_swish(x)
+#         end_points["global_pool"] = x
+#
+#         x = _fully_connected_layer(x, units=cfgs.NUM_CLASS, name='cls_out', reuse=None)
+#         end_points['cls_prob'] = x
+#
+#     return end_points['bneck0'], end_points['bneck2'], end_points['bneck7'], end_points['bneck10']

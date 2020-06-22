@@ -29,26 +29,19 @@ def convert_voc_annotation(data_path, train_path, test_path):
     classes = ['love', 'like', 'scissors']
     img_list = os.listdir('D:/dataset/hand_samples_sunzhi/images-new')
     train_num = 0
-    test_num = 0
     with open(train_path, 'w') as f_train:
-        with open(test_path, 'w') as f_test:
-            for i, image_ind in enumerate(img_list):
-                if 'neg' in image_ind:
-                    image_path = data_path + '/images-new/' + image_ind
-                    annotation = image_path
-                    img = cv2.imread(image_path)
-                    h, w, _ = img.shape
-                    class_ind = -1
-                    x_min, y_min, x_max, y_max = int(0.2 * w), int(0.2 * h), int(0.8 * w), int(0.8 * h)
-                    annotation += ' ' + ','.join([str(i) for i in [x_min, y_min, x_max, y_max, class_ind]])
-                    print(annotation)
-                    if i % 500 < 50:
-                        f_test.write(annotation + "\n")
-                        test_num += 1
-                    else:
-                        f_train.write(annotation + '\n')
-                        train_num += 1
-    return train_num, test_num
+        for i, image_ind in enumerate(img_list):
+            image_path = data_path + '/images-new/' + image_ind
+            annotation = image_path
+            img = cv2.imread(image_path)
+            h, w, _ = img.shape
+            class_ind = 3
+            x_min, y_min, x_max, y_max = int(0.2 * w), int(0.2 * h), int(0.8 * w), int(0.8 * h)
+            annotation += ' ' + ','.join([str(i) for i in [x_min, y_min, x_max, y_max, class_ind]])
+            print(annotation)
+            f_train.write(annotation + '\n')
+            train_num += 1
+    return train_num, 0
 
 
 if __name__ == '__main__':

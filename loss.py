@@ -52,10 +52,10 @@ def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=cfgs.SIGMA):
     y_pred = tf.batch_gather(y_pred, indices)
     mask = tf.tile(tf.expand_dims(mask, axis=-1), (1, 1, 2))
     sigma_2 = sigma ** 2
-    box_diff = y_pred * mask - y_true * mask
-    abs_box_diff = tf.abs(box_diff)
-    smoothL1_sign = tf.stop_gradient(tf.to_float(tf.less(abs_box_diff, 1. / sigma_2)))
-    loss_box = tf.pow(box_diff, 2) * (sigma_2 / 2.0) * smoothL1_sign + (abs_box_diff - (0.5 / sigma_2)) * (
+    diff = y_pred * mask - y_true * mask
+    abs_diff = tf.abs(diff)
+    smoothL1_sign = tf.stop_gradient(tf.to_float(tf.less(abs_diff, 1. / sigma_2)))
+    loss_box = tf.pow(diff, 2) * (sigma_2 / 2.0) * smoothL1_sign + (abs_diff - (0.5 / sigma_2)) * (
                 1.0 - smoothL1_sign)
     total_loss = tf.reduce_sum(loss_box)
     loss = total_loss * 2 / (tf.reduce_sum(mask) + 1e-5)

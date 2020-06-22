@@ -18,6 +18,7 @@ def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=tf
             strides=strides,
             padding=padding,
             use_bias=False,
+            kernel_initializer=cfgs.WEIGHT_INITIALIZER,
             kernel_regularizer=cfgs.WEIGHT_REGULARIZER
         )
         conv = _bn(conv, is_training)
@@ -28,6 +29,7 @@ def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=tf
             kernel_size=kernel_size,
             strides=strides,
             padding=padding,
+            kernel_initializer=cfgs.WEIGHT_INITIALIZER,
             kernel_regularizer=cfgs.WEIGHT_REGULARIZER
         )
     if activation is not None:
@@ -49,6 +51,7 @@ def upsampling(inputs,  method="deconv"):
             kernel_size=4,
             strides=2,
             padding='same',
+            kernel_initializer=cfgs.WEIGHT_INITIALIZER,
             kernel_regularizer=cfgs.WEIGHT_REGULARIZER
         )
     return output
