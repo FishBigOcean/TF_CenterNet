@@ -1,6 +1,7 @@
 import tensorflow as tf
 import cfgs
 
+
 # # 目标的高斯分布，表示目标的中心点
 # batch_hm = np.zeros(
 #     (cfgs.BATCH_SIZE, cfgs.INPUT_IMAGE_H // cfgs.DOWN_RATIO, cfgs.INPUT_IMAGE_W // cfgs.DOWN_RATIO, cfgs.NUM_CLASS),
@@ -56,10 +57,16 @@ def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=cfgs.SIGMA):
     abs_diff = tf.abs(diff)
     smoothL1_sign = tf.stop_gradient(tf.to_float(tf.less(abs_diff, 1. / sigma_2)))
     loss_box = tf.pow(diff, 2) * (sigma_2 / 2.0) * smoothL1_sign + (abs_diff - (0.5 / sigma_2)) * (
-                1.0 - smoothL1_sign)
+            1.0 - smoothL1_sign)
     total_loss = tf.reduce_sum(loss_box)
     loss = total_loss * 2 / (tf.reduce_sum(mask) + 1e-5)
     return loss
+
+
+def cross_entropy_loss(y_pred, y_true, mask):
+    y_true = tf.cast(tf.batch_gather(y_true, tf.zeros([cfgs.BATCH_SIZE, 1], dtype=tf.int32)), dtype=tf.int32)
+    cls_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y_pred, labels=y_true))
+    return cls_loss
 
 
 def giou(self, boxes1, boxes2):

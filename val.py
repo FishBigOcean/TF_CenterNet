@@ -11,7 +11,7 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names, cal_iou
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
-mode = 1  # 1 GPU 2 CPU 3 single-CPU
+mode = 3  # 1 GPU 2 CPU 3 single-CPU
 
 if mode == 1:
     sess = tf.Session()
@@ -26,7 +26,7 @@ elif mode == 3:
                             intra_op_parallelism_threads=cpu_num)
     sess = tf.Session(config=config)
 
-inputs = tf.placeholder(shape=[None, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
+inputs = tf.placeholder(shape=[1, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
 model = CenterNet(inputs, False)
 saver = tf.train.Saver()
 saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
@@ -34,8 +34,8 @@ saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
 hm = model.pred_hm
 wh = model.pred_wh
 reg = model.pred_reg
-det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
-
+cls = model.pred_cls
+det = decode(hm, wh, reg, cls, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
@@ -60,14 +60,13 @@ for txt_line in txt_lines:
     t0 = time.time()
     detections = sess.run(det, feed_dict={inputs: image_data})
     print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
-    detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], cfgs.DOWN_RATIO,
+    detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                              cfgs.DOWN_RATIO,
                               cfgs.SCORE_THRESHOLD)
 
     if len(detections) == 0:
-        if cls == -1:
+        if cls == cfgs.NUM_CLASS:
             correct_num += 1
-    elif cls >= 0 and cls == detections[0][-1] and cal_iou(detections[0], points) > cfgs.VAL_IOU_THRESH:
+    elif cls < cfgs.NUM_CLASS and cls == detections[0][-1] and cal_iou(detections[0], points) > cfgs.VAL_IOU_THRESH:
         correct_num += 1
 print(correct_num / all_num)
-
-

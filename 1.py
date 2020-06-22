@@ -139,5 +139,3 @@ import imagehash, cv2, os
 #             break
 
 
-
-

@@ -26,7 +26,7 @@ elif mode == 3:
                             intra_op_parallelism_threads=cpu_num)
     sess = tf.Session(config=config)
 
-inputs = tf.placeholder(shape=[None, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
+inputs = tf.placeholder(shape=[1, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
 model = CenterNet(inputs, False)
 saver = tf.train.Saver()
 saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
@@ -34,7 +34,8 @@ saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
 hm = model.pred_hm
 wh = model.pred_wh
 reg = model.pred_reg
-det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
+cls = model.pred_cls
+det = decode(hm, wh, reg, cls, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 

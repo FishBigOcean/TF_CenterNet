@@ -34,6 +34,7 @@ def process_data(line, use_aug):
     reg = np.zeros((cfgs.MAX_OBJ, 2), dtype=np.float32)
     reg_mask = np.zeros((cfgs.MAX_OBJ), dtype=np.float32)
     ind = np.zeros((cfgs.MAX_OBJ), dtype=np.float32)
+    cls = np.zeros((cfgs.MAX_OBJ), dtype=np.float32)
 
     for idx, label in enumerate(labels):
         if label[-1] < cfgs.NUM_CLASS:
@@ -49,8 +50,9 @@ def process_data(line, use_aug):
             reg[idx] = ct - ct_int
             reg_mask[idx] = 1
             ind[idx] = ct_int[1] * output_w + ct_int[0]
+        cls[idx] = label[-1]
 
-    return image, hm, wh, reg, reg_mask, ind
+    return image, hm, wh, reg, reg_mask, ind, cls
 
 
 def get_data(batch_lines, use_aug):
@@ -67,14 +69,17 @@ def get_data(batch_lines, use_aug):
     batch_reg_mask = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ), dtype=np.float32)
     # 目标关键点在2D heatmap中对应的1D heatmap的索引
     batch_ind = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ), dtype=np.float32)
+    # 分类标签
+    batch_cls = np.zeros((cfgs.BATCH_SIZE, cfgs.MAX_OBJ), dtype=np.float32)
     # batch_image, batch_label_sbbox, batch_label_mbbox, batch_label_lbbox, batch_sbboxes, batch_mbboxes, batch_lbboxes= [], [], [], [], [], [], []
     for num, line in enumerate(batch_lines):
-        image, hm, wh, reg, reg_mask, ind = process_data(line, use_aug)
+        image, hm, wh, reg, reg_mask, ind, cls = process_data(line, use_aug)
         batch_image[num, :, :, :] = image
         batch_hm[num, :, :, :] = hm
         batch_wh[num, :, :] = wh
         batch_reg[num, :, :] = reg
         batch_reg_mask[num, :] = reg_mask
         batch_ind[num, :] = ind
+        batch_cls[num, :] = cls
 
-    return batch_image, batch_hm, batch_wh, batch_reg, batch_reg_mask, batch_ind
+    return batch_image, batch_hm, batch_wh, batch_reg, batch_reg_mask, batch_ind, batch_cls

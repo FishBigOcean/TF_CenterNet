@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import sys
 
 def nms(heat, kernel=3):
     hmax = tf.layers.max_pooling2d(heat, kernel, 1, padding='same')
@@ -7,14 +7,20 @@ def nms(heat, kernel=3):
     return heat * keep
 
 
-def topk(hm, K=100):
+def topk(hm, cls, K=100):
     batch, height, width, cat = tf.shape(hm)[0], tf.shape(hm)[1], tf.shape(hm)[2], tf.shape(hm)[3]
     # [b,h*w*c]
     scores = tf.reshape(hm, (batch, -1))
-    # [b,k]
+    # [b,k]'
     topk_scores, topk_inds = tf.nn.top_k(scores, k=K)
-    # [b,k]
+    # [b,k]   cls [b, 4]
     topk_clses = topk_inds % cat
+    # topk_clses = tf.Print(topk_clses, [topk_clses, topk_clses.shape], message='topk_cls.shape')
+    # cls = tf.nn.softmax(cls)
+    # cls = tf.Print(cls, [cls, cls.shape], message='cls.shape')
+    # cls = tf.reshape(cls, [1, 4])
+    # topk_scores = topk_scores * tf.batch_gather(cls, topk_clses)
+
     topk_xs = tf.cast(topk_inds // cat % width, tf.float32)
     topk_ys = tf.cast(topk_inds // cat // width, tf.float32)
     topk_inds = tf.cast(topk_ys * tf.cast(width, tf.float32) + topk_xs, tf.int32)
@@ -22,11 +28,11 @@ def topk(hm, K=100):
     return topk_scores, topk_inds, topk_clses, topk_ys, topk_xs
 
 
-def decode(heat, wh, reg=None, K=100):
+def decode(heat, wh, reg=None, cls=None, K=100):
     batch, height, width, cat = tf.shape(heat)[0], tf.shape(heat)[1], tf.shape(heat)[2], tf.shape(heat)[3]
     heat = nms(heat)
     # [b,k], [b,k], [b,k], [b,k], [b,k]
-    scores, inds, clses, ys, xs = topk(heat, K=K)
+    scores, inds, clses, ys, xs = topk(heat, cls, K=K)
 
     if reg is not None:
         reg = tf.reshape(reg, (batch, -1, tf.shape(reg)[-1]))

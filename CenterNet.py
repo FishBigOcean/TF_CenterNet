@@ -10,7 +10,7 @@ class CenterNet():
     def __init__(self, inputs, is_training):
         self.is_training = is_training
         try:
-            self.pred_hm, self.pred_wh, self.pred_reg = self._build_model(inputs)
+            self.pred_hm, self.pred_wh, self.pred_reg, self.pred_cls = self._build_model(inputs)
         except:
             raise NotImplementedError("Can not build up centernet network!")
 
@@ -19,7 +19,7 @@ class CenterNet():
             # mobilenet v2
             # c2, c3, c4, c5 = mobilenet.MobileNetV2(inputs=inputs, is_training=self.is_training).forward()
             # mobilenet v3
-            c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
+            c2, c3, c4, c5, cls = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
 
             p5 = _conv(c5, 24, [1, 1], is_training=self.is_training)
 
@@ -48,10 +48,11 @@ class CenterNet():
             reg = _conv(features, 24, [3, 3], is_training=self.is_training)
             reg = tf.layers.conv2d(reg, 2, 1, 1, padding='valid', activation=None, name='reg')
 
-        return hm, wh, reg
+        return hm, wh, reg, cls
 
-    def compute_loss(self, true_hm, true_wh, true_reg, reg_mask, ind):
+    def compute_loss(self, true_hm, true_wh, true_reg, reg_mask, ind, true_cls):
         hm_loss = loss.focal_loss(self.pred_hm, true_hm) * cfgs.HM_LOSS_WEIGHT
         wh_loss = loss.reg_l1_loss(self.pred_wh, true_wh, ind, reg_mask) * cfgs.WH_LOSS_WEIGHT
         reg_loss = loss.reg_l1_loss(self.pred_reg, true_reg, ind, reg_mask) * cfgs.REG_LOSS_WEIGHT
-        return hm_loss, wh_loss, reg_loss
+        cls_loss = loss.cross_entropy_loss(self.pred_cls, true_cls, reg_mask) * cfgs.CLS_LOSS_WEIGHT
+        return hm_loss, wh_loss, reg_loss, cls_loss
