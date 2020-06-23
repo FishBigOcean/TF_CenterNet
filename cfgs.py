@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 
 # version
-VERSION = 'v1.4_1'
+VERSION = 'v1.4_cls'
 
 # dataset
 USED_MEANS = [0.490, 0.451, 0.429]
@@ -25,7 +25,7 @@ SAVE_MIN = True
 WEIGHT_INITIALIZER = tf.variance_scaling_initializer(2, 'fan_avg', 'truncated_normal')
 WEIGHT_REGULARIZER = tf.contrib.layers.l2_regularizer(0.0005)
 BN_MOMENTUM = 0.99
-MBV3_SHRINK = 1
+MBV3_SHRINK = 0.75
 # learning rate
 LR_TPYE = "piecewise"  # "exponential","piecewise","CosineAnnealing"
 LR = 1e-3  # exponential
@@ -49,7 +49,7 @@ SIGMA = 10
 
 # test
 TEST_DATA_FILE = './data/dataset/test-v3.txt'
-SCORE_THRESHOLD = 0.2
+SCORE_THRESHOLD = 0.4
 USE_NMS = True
 NMS_THRESH = 0.5
 SHOW_NUM = 1

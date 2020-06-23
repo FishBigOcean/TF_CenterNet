@@ -11,7 +11,7 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
-mode = 2  # 1 GPU 2 CPU 3 single-CPU
+mode = 3  # 1 GPU 2 CPU 3 single-CPU
 
 if mode == 1:
     sess = tf.Session()
@@ -39,15 +39,15 @@ det = decode(hm, wh, reg, cls, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
-# with open('./data/dataset/test-v3.txt', 'r') as f_read:
-#     txt_lines = f_read.readlines()
-# for txt_line in txt_lines:
-#     img_path = txt_line.split(' ')[0]
-#     img_point = txt_line.split(' ')[1:]
+with open('./data/dataset/test-v3.txt', 'r') as f_read:
+    txt_lines = f_read.readlines()
+for txt_line in txt_lines:
+    img_path = txt_line.split(' ')[0]
+    img_point = txt_line.split(' ')[1:]
 
-img_names = os.listdir('D:/dataset/hand_network')
-for img_name in img_names:
-    img_path = 'D:/dataset/hand_network/' + img_name
+# img_names = os.listdir('D:/dataset/hand_network')
+# for img_name in img_names:
+#     img_path = 'D:/dataset/hand_network/' + img_name
 
     original_image = cv2.imread(img_path)
     original_image_size = original_image.shape[:2]

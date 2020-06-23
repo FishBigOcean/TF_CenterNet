@@ -11,7 +11,7 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names, cal_iou
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
-mode = 3  # 1 GPU 2 CPU 3 single-CPU
+mode = 1  # 1 GPU 2 CPU 3 single-CPU
 
 if mode == 1:
     sess = tf.Session()

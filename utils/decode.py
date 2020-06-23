@@ -1,5 +1,6 @@
 import tensorflow as tf
 import sys
+import cfgs
 
 def nms(heat, kernel=3):
     hmax = tf.layers.max_pooling2d(heat, kernel, 1, padding='same')
@@ -15,11 +16,9 @@ def topk(hm, cls, K=100):
     topk_scores, topk_inds = tf.nn.top_k(scores, k=K)
     # [b,k]   cls [b, 4]
     topk_clses = topk_inds % cat
-    # topk_clses = tf.Print(topk_clses, [topk_clses, topk_clses.shape], message='topk_cls.shape')
-    # cls = tf.nn.softmax(cls)
-    # cls = tf.Print(cls, [cls, cls.shape], message='cls.shape')
-    # cls = tf.reshape(cls, [1, 4])
-    # topk_scores = topk_scores * tf.batch_gather(cls, topk_clses)
+    cls = tf.nn.softmax(cls)
+    cls = tf.reshape(cls, [tf.shape(topk_clses)[0], cfgs.NUM_CLASS + 1])
+    topk_scores = topk_scores * tf.batch_gather(cls, topk_clses)
 
     topk_xs = tf.cast(topk_inds // cat % width, tf.float32)
     topk_ys = tf.cast(topk_inds // cat // width, tf.float32)
