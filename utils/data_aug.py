@@ -3,6 +3,16 @@ import numpy as np
 import cv2
 
 
+def random_gamma_tranform(image):
+    if random.random() < 0.75:
+        gamma_list = [0.8, 0.9, 1.1]
+        gamma = gamma_list[random.randint(0, 2)]
+        image = image / 255.0
+        image = np.power(image, gamma) * 255.0
+        image = image.astype(np.uint8)
+    return image
+
+
 def random_horizontal_flip(image, bboxes):
     if random.random() < 0.5:
         _, w, _ = image.shape
@@ -19,13 +29,13 @@ def random_crop(image, bboxes):
 
         max_l_trans = max_bbox[0]
         max_u_trans = max_bbox[1]
-        max_r_trans = w - 1 - max_bbox[2]
-        max_d_trans = h - 1 - max_bbox[3]
+        max_r_trans = w - max_bbox[2]
+        max_d_trans = h - max_bbox[3]
 
-        crop_xmin = max(0, int(max_bbox[0] - random.uniform(0, max_l_trans // 3)))
-        crop_ymin = max(0, int(max_bbox[1] - random.uniform(0, max_u_trans // 3)))
-        crop_xmax = min(w, int(max_bbox[2] + random.uniform(0, max_r_trans // 3)))
-        crop_ymax = min(h, int(max_bbox[3] + random.uniform(0, max_d_trans // 3)))
+        crop_xmin = max(0, int(max_bbox[0] - random.uniform(0, max_l_trans * 2 // 3) - max_l_trans // 3))
+        crop_ymin = max(0, int(max_bbox[1] - random.uniform(0, max_u_trans * 2 // 3) - max_u_trans // 3))
+        crop_xmax = min(w, int(max_bbox[2] + random.uniform(0, max_r_trans * 2 // 3) + max_r_trans // 3))
+        crop_ymax = min(h, int(max_bbox[3] + random.uniform(0, max_d_trans * 2 // 3) + max_d_trans // 3))
 
         image = image[crop_ymin: crop_ymax, crop_xmin: crop_xmax]
 

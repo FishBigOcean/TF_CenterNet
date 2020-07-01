@@ -7,7 +7,7 @@ import cv2
 import math
 from utils.utils import image_preprocess
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
-from utils.data_aug import random_horizontal_flip, random_crop, random_translate, random_color_distort
+from utils.data_aug import random_horizontal_flip, random_crop, random_translate, random_color_distort, random_gamma_tranform
 
 
 def process_data(line, use_aug):
@@ -23,7 +23,8 @@ def process_data(line, use_aug):
     if use_aug:
         # image, labels = random_horizontal_flip(image, labels)
         image, labels = random_crop(image, labels)
-        image, labels = random_translate(image, labels)
+        image = random_gamma_tranform(image)
+        # image, labels = random_translate(image, labels)
         # image = random_color_distort(image)
     image, labels = image_preprocess(np.copy(image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], np.copy(labels))
 

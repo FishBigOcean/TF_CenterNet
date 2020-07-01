@@ -175,8 +175,8 @@ def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, r
         [40, 48, 5, 1, "HS", True, 120],  # 6  16
         [48, 48, 5, 1, "HS", True, 144],  # 7  16
         [48, 96, 5, 2, "HS", True, 288],  # 8  32
-        [96, 96, 5, 1, "HS", True, 576],  # 9  32
-        [96, 96, 5, 1, "HS", True, 576],  # 10 32
+        # [96, 96, 5, 1, "HS", True, 576],  # 9  32
+        # [96, 96, 5, 1, "HS", True, 576],  # 10 32
     ]
 
     input_size = inputs.get_shape().as_list()[1:-1]
@@ -201,7 +201,7 @@ def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, r
             end_points["bneck{}".format(idx)] = x
 
 
-    return end_points['bneck0'], end_points['bneck2'], end_points['bneck7'], end_points['bneck10']
+    return end_points['bneck0'], end_points['bneck2'], end_points['bneck7'], end_points['bneck8']
 
 
 # def mobilenet_v3_small(inputs, multiplier=cfgs.MBV3_SHRINK, is_training=False, reuse=None):

@@ -138,6 +138,3 @@ import imagehash, cv2, os
 #             print("The number of photos which were processed is ", processed_number)
 #             break
 
-
-
-

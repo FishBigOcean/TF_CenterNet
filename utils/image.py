@@ -88,7 +88,7 @@ def crop(img, center, scale, output_size, rot=0):
 
 
 # CenterNet的实现存在bug，最后一步除法应该除以2a而不是2，CornerNet已经修改了。
-def gaussian_radius(det_size, min_overlap=0.7):
+def gaussian_radius(det_size, min_overlap=0.5):
     height, width = det_size
 
     a1 = 1

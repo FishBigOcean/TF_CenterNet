@@ -39,7 +39,7 @@ det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
-with open('./data/dataset/test-v3.txt', 'r') as f_read:
+with open(cfgs.TEST_DATA_FILE, 'r') as f_read:
     txt_lines = f_read.readlines()
 
 all_num = len(txt_lines)
@@ -59,15 +59,22 @@ for txt_line in txt_lines:
 
     t0 = time.time()
     detections = sess.run(det, feed_dict={inputs: image_data})
-    print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
+    # print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
     detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], cfgs.DOWN_RATIO,
                               cfgs.SCORE_THRESHOLD)
 
     if len(detections) == 0:
-        if cls == -1:
+        if cls >= cfgs.NUM_CLASS:
             correct_num += 1
-    elif cls >= 0 and cls == detections[0][-1] and cal_iou(detections[0], points) > cfgs.VAL_IOU_THRESH:
+        else:
+            print(img_path)
+    elif cls < cfgs.NUM_CLASS and cls == detections[0][-1] and cal_iou(detections[0], points) > cfgs.VAL_IOU_THRESH:
         correct_num += 1
+    else:
+        print(img_path)
+print(correct_num)
+print(all_num)
 print(correct_num / all_num)
+
 
 

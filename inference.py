@@ -11,7 +11,7 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
-mode = 2  # 1 GPU 2 CPU 3 single-CPU
+mode = 3  # 1 GPU 2 CPU 3 single-CPU
 
 if mode == 1:
     sess = tf.Session()
@@ -26,7 +26,7 @@ elif mode == 3:
                             intra_op_parallelism_threads=cpu_num)
     sess = tf.Session(config=config)
 
-inputs = tf.placeholder(shape=[None, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
+inputs = tf.placeholder(shape=[1, cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W, 3], dtype=tf.float32)
 model = CenterNet(inputs, False)
 saver = tf.train.Saver()
 saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
@@ -38,48 +38,99 @@ det = decode(hm, wh, reg, K=cfgs.SHOW_NUM)
 
 class_names = read_class_names(cfgs.CLASS_FILE)
 
-# with open('./data/dataset/test-v3.txt', 'r') as f_read:
-#     txt_lines = f_read.readlines()
-# for txt_line in txt_lines:
-#     img_path = txt_line.split(' ')[0]
-#     img_point = txt_line.split(' ')[1:]
 
-img_names = os.listdir('D:/dataset/hand_network')
-for img_name in img_names:
-    img_path = 'D:/dataset/hand_network/' + img_name
+def inference_video(video):
+    if video == "0":
+        video = 0
+    cap = cv2.VideoCapture(video)
+    while 1:
+        ret, original_image = cap.read()
+        original_image_size = original_image.shape[:2]
+        image_data = image_preprocess(np.copy(original_image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W])
+        image_data = image_data[np.newaxis, ...]
 
-    original_image = cv2.imread(img_path)
-    original_image_size = original_image.shape[:2]
-    image_data = image_preprocess(np.copy(original_image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W])
-    image_data = image_data[np.newaxis, ...]
-
-    t0 = time.time()
-    detections = sess.run(det, feed_dict={inputs: image_data})
-    print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
-    detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
-                              cfgs.DOWN_RATIO,
-                              cfgs.SCORE_THRESHOLD)
-    if cfgs.USE_NMS:
-        cls_in_img = list(set(detections[:, 5]))
-        results = []
-        for c in cls_in_img:
-            cls_mask = (detections[:, 5] == c)
-            classified_det = detections[cls_mask]
-            classified_bboxes = classified_det[:, :4]
-            classified_scores = classified_det[:, 4]
-            inds = py_nms(classified_bboxes, classified_scores, max_boxes=50, iou_thresh=cfgs.NMS_THRESH)
-            results.extend(classified_det[inds])
-        results = np.asarray(results)
-        if len(results) != 0:
-            bboxes = results[:, 0:4]
-            scores = results[:, 4]
-            classes = results[:, 5]
+        t0 = time.time()
+        detections = sess.run(det, feed_dict={inputs: image_data})
+        print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
+        detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                  cfgs.DOWN_RATIO,
+                                  cfgs.SCORE_THRESHOLD)
+        if cfgs.USE_NMS:
+            cls_in_img = list(set(detections[:, 5]))
+            results = []
+            for c in cls_in_img:
+                cls_mask = (detections[:, 5] == c)
+                classified_det = detections[cls_mask]
+                classified_bboxes = classified_det[:, :4]
+                classified_scores = classified_det[:, 4]
+                inds = py_nms(classified_bboxes, classified_scores, max_boxes=50, iou_thresh=cfgs.NMS_THRESH)
+                results.extend(classified_det[inds])
+            results = np.asarray(results)
+            if len(results) != 0:
+                bboxes = results[:, 0:4]
+                scores = results[:, 4]
+                classes = results[:, 5]
+                bboxes_draw_on_img(original_image, classes, scores, bboxes, class_names)
+        else:
+            bboxes = detections[:, 0:4]
+            scores = detections[:, 4]
+            classes = detections[:, 5]
             bboxes_draw_on_img(original_image, classes, scores, bboxes, class_names)
-    else:
-        bboxes = detections[:, 0:4]
-        scores = detections[:, 4]
-        classes = detections[:, 5]
-        bboxes_draw_on_img(original_image, classes, scores, bboxes, class_names)
 
-    cv2.imshow('img', original_image)
-    cv2.waitKey()
+        cv2.imshow('img', original_image)
+        cv2.waitKey(5)
+
+
+def inference_image():
+    with open(cfgs.TEST_DATA_FILE, 'r') as f_read:
+        txt_lines = f_read.readlines()
+    for txt_line in txt_lines:
+        img_path = txt_line.split(' ')[0]
+        img_point = txt_line.split(' ')[1:]
+
+    # img_names = os.listdir('D:/dataset/hand_network')
+    # for img_name in img_names:
+    #     img_path = 'D:/dataset/hand_network/' + img_name
+
+        original_image = cv2.imread(img_path)
+        original_image_size = original_image.shape[:2]
+        image_data = image_preprocess(np.copy(original_image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W])
+        image_data = image_data[np.newaxis, ...]
+
+        t0 = time.time()
+        detections = sess.run(det, feed_dict={inputs: image_data})
+        print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
+        detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                  cfgs.DOWN_RATIO,
+                                  cfgs.SCORE_THRESHOLD)
+        if cfgs.USE_NMS:
+            cls_in_img = list(set(detections[:, 5]))
+            results = []
+            for c in cls_in_img:
+                cls_mask = (detections[:, 5] == c)
+                classified_det = detections[cls_mask]
+                classified_bboxes = classified_det[:, :4]
+                classified_scores = classified_det[:, 4]
+                inds = py_nms(classified_bboxes, classified_scores, max_boxes=50, iou_thresh=cfgs.NMS_THRESH)
+                results.extend(classified_det[inds])
+            results = np.asarray(results)
+            if len(results) != 0:
+                bboxes = results[:, 0:4]
+                scores = results[:, 4]
+                classes = results[:, 5]
+                bboxes_draw_on_img(original_image, classes, scores, bboxes, class_names)
+        else:
+            bboxes = detections[:, 0:4]
+            scores = detections[:, 4]
+            classes = detections[:, 5]
+            bboxes_draw_on_img(original_image, classes, scores, bboxes, class_names)
+
+        cv2.imshow('img', original_image)
+        cv2.waitKey()
+
+
+if __name__ == "__main__":
+    # 1 - 11
+    inference_video('D:/dataset/cc_4/1.flv')
+    # inference_video(0)
+    # inference_image()
