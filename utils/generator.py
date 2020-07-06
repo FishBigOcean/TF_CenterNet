@@ -7,7 +7,7 @@ import cv2
 import math
 from utils.utils import image_preprocess
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
-from utils.data_aug import random_horizontal_flip, random_crop, random_translate, random_color_distort, random_gamma_tranform
+from utils.data_aug import *
 
 
 def process_data(line, use_aug):
@@ -21,11 +21,18 @@ def process_data(line, use_aug):
     labels = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in s[1:]])
 
     if use_aug:
-        # image, labels = random_horizontal_flip(image, labels)
-        image, labels = random_crop(image, labels)
-        image = random_gamma_tranform(image)
-        # image, labels = random_translate(image, labels)
-        # image = random_color_distort(image)
+        if not cfgs.USE_ROTATE:
+            # image, labels = random_horizontal_flip(image, labels)
+            image, labels = random_crop(image, labels)
+            random_hsv(image)
+            image, labels = random_translate(image, labels)
+            image = random_grid_mask(image)
+            # image = random_beauty_face(image)
+            # image = random_color_distort(image)
+        else:
+            image, labels = random_affine(image, labels)
+            random_hsv(image)
+            image = random_grid_mask(image)
     image, labels = image_preprocess(np.copy(image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], np.copy(labels))
 
     output_h = cfgs.INPUT_IMAGE_H // cfgs.DOWN_RATIO

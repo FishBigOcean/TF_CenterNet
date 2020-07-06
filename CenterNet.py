@@ -2,7 +2,7 @@ import tensorflow as tf
 import cfgs
 import loss
 from net import resnet, mobilenet, mobilenet_v3, cspnet
-from net.layers import _conv, upsampling, detect_module, _shuffle
+from net.layers import _conv, upsampling, detect_module_dwise, _shuffle, detect_module_conv
 import numpy as np
 
 
@@ -19,24 +19,32 @@ class CenterNet():
         with tf.variable_scope('mobilenet'):
             # mobilenet v2
             # c2, c3, c4, c5 = mobilenet.MobileNetV2(inputs=inputs, is_training=self.is_training).forward()
+
             # mobilenet v3
             # c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
+
+            # cspdarknet_dw
+            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
+
+            # cspdarknet_dw_focus
+            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise_focus(inputs=inputs, is_training=self.is_training)
 
             # # cspdarknet
             c2, c3, c4, c5 = cspnet.cspdarknet53_tiny(inputs=inputs, is_training=self.is_training)
 
-            p5 = _conv(c5, 24, [1, 1], is_training=self.is_training)
+            channel = 32
+            p5 = _conv(c5, channel, [1, 1], is_training=self.is_training)
 
             up_p5 = upsampling(p5, method='resize')
-            reduce_dim_c4 = _conv(c4, 24, [1, 1], is_training=self.is_training)
+            reduce_dim_c4 = _conv(c4, channel, [1, 1], is_training=self.is_training)
             p4 = up_p5 + reduce_dim_c4
 
             up_p4 = upsampling(p4, method='resize')
-            reduce_dim_c3 = _conv(c3, 24, [1, 1], is_training=self.is_training)
+            reduce_dim_c3 = _conv(c3, channel, [1, 1], is_training=self.is_training)
             p3 = up_p4 + reduce_dim_c3
 
             up_p3 = upsampling(p3, method='resize')
-            reduce_dim_c2 = _conv(c2, 24, [1, 1], is_training=self.is_training)
+            reduce_dim_c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
             p2 = up_p3 + reduce_dim_c2
 
             # c5_upsample = upsampling(c5, method='complex', output_dim=24)
@@ -54,14 +62,16 @@ class CenterNet():
             # p2 = tf.concat([c2, c3_upsample], axis=3)
             # p2 = _shuffle(p2, 4)
 
-            # features = _conv(p2, 24, [3, 3], is_training=self.is_training) # 最大计算量
-            features = detect_module(p2, 24, [3, 3], is_training=self.is_training)
+            # features = _conv(p2, channel, [3, 3], is_training=self.is_training)
 
+            # features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)
+
+            features = detect_module_conv(p2, channel, [3, 3], is_training=self.is_training)
 
         with tf.variable_scope('detector'):
             hm = tf.layers.conv2d(features, cfgs.NUM_CLASS, 1, 1, padding='valid', activation=tf.nn.sigmoid,
                                   bias_initializer=tf.constant_initializer(-np.log(99.)), name='hm')
-                                                    # tf.initializers.constant(-2.19)
+            # tf.initializers.constant(-2.19)  tf.constant_initializer(-np.log(99.))
 
             wh = tf.layers.conv2d(features, 2, 1, 1, padding='valid', activation=None, name='wh')
 
@@ -73,7 +83,7 @@ class CenterNet():
 
     def compute_loss(self, true_hm, true_wh, true_reg, reg_mask, ind):
         hm_loss = loss.focal_loss(self.pred_hm, true_hm) * cfgs.HM_LOSS_WEIGHT
-        wh_loss = loss.reg_l1_loss(self.pred_wh, true_wh, ind, reg_mask) * cfgs.WH_LOSS_WEIGHT
+        wh_loss = loss.ciou(self.pred_wh, true_wh, ind, reg_mask) * cfgs.WH_LOSS_WEIGHT
         if cfgs.ADD_REG:
             reg_loss = loss.reg_l1_loss(self.pred_reg, true_reg, ind, reg_mask) * cfgs.REG_LOSS_WEIGHT
         else:

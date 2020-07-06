@@ -68,6 +68,51 @@ def _dwise_conv(inputs, k_h=3, k_w=3, depth_multiplier=1, strides=(1, 1),
                                       )
 
 
+def mobilenet_v3_block(input, k_s, expansion_ratio, output_dim, stride, name, is_training=True,
+                       use_bias=True, shortcut=True, activatation="RE", ratio=16, se=False,
+                       reuse=None):
+    bottleneck_dim = expansion_ratio
+
+    with tf.variable_scope(name, reuse=reuse):
+        # pw mobilenetV2
+        net = _conv_1x1_bn(input, bottleneck_dim, name="pw", use_bias=False, is_training=is_training)
+
+        if activatation == "HS":
+            net = hard_swish(net)
+        elif activatation == "RE":
+            net = relu6(net)
+        else:
+            raise NotImplementedError
+
+        # dw
+        net = _dwise_conv(net, k_w=k_s, k_h=k_s, strides=[stride, stride], name='dw',
+                          use_bias=use_bias, reuse=reuse)
+
+        net = _batch_normalization_layer(net, is_training=is_training, name='dw_bn', reuse=reuse)
+
+        if activatation == "HS":
+            net = hard_swish(net)
+        elif activatation == "RE":
+            net = relu6(net)
+        else:
+            raise NotImplementedError
+
+        # squeeze and excitation
+        if se:
+            channel = net.get_shape().as_list()[-1]
+            net = _squeeze_excitation_layer(net, out_dim=channel, ratio=ratio, layer_name='se_block')
+
+        # pw & linear
+        net = _conv_1x1_bn(net, output_dim, name="pw_linear", use_bias=use_bias, is_training=is_training)
+
+        # element wise add, only for stride==1
+        if shortcut and stride == 1:
+            net += input
+            net = tf.identity(net, name='block_output')
+
+    return net
+
+
 def relu6(x, name='relu6'):
     return tf.nn.relu6(x, name)
 
@@ -130,6 +175,15 @@ def _dwise_bn_act(inputs, is_training, name, activation=relu6):
 def route_group(input_layer, groups, group_id):
     conv_group = tf.split(input_layer, num_or_size_splits=groups, axis=-1)
     return conv_group[group_id]
+
+
+def focus(inputs, out_channel, is_training):
+    # Focus wh information into c-space
+    shape = tf.shape(inputs)
+    inputs = tf.reshape(inputs, [shape[0], shape[1] // 2, shape[2] // 2, shape[3] * 4])
+    outputs = _conv_bn_relu(inputs, filters_num=out_channel, kernel_size=3, name='init',
+                           use_bias=False, strides=1, is_training=is_training, activation=leaky_relu)
+    return outputs
 
 
 def cspdarknet53_tiny(inputs, is_training):
@@ -202,65 +256,109 @@ def cspdarknet53_tiny(inputs, is_training):
 def cspdarknet53_tiny_dwise(inputs, is_training):
     init_conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=init_conv_out, kernel_size=3, name='init',
-                           use_bias=False, strides=2, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=2, is_training=is_training, activation=leaky_relu)
 
     conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_0',
-                           use_bias=False, strides=2, is_training=is_training, activation=relu6)
+    route = inputs
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_0', leaky_relu)
+    inputs = tf.concat([route, inputs], axis=-1)
+    inputs = tf.layers.max_pooling2d(inputs, 3, 2, padding='SAME')
 
     conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c2_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_1', leaky_relu)
     route = inputs
     inputs = route_group(inputs, 2, 1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_1', leaky_relu)
     route_1 = inputs
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_2', leaky_relu)
     inputs = tf.concat([inputs, route_1], axis=-1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c2_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_3', leaky_relu)
     inputs = tf.concat([route, inputs], axis=-1)
     c2 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c3_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_1', leaky_relu)
     route = inputs
     inputs = route_group(inputs, 2, 1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c3_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_1', leaky_relu)
     route_1 = inputs
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c3_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_2', leaky_relu)
     inputs = tf.concat([inputs, route_1], axis=-1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c3_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_3', leaky_relu)
     inputs = tf.concat([route, inputs], axis=-1)
     c3 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(128 * cfgs.CSPNET_SHRINK)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c4_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_1', leaky_relu)
     route = inputs
     inputs = route_group(inputs, 2, 1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c4_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_1', leaky_relu)
     route_1 = inputs
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c4_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_2', leaky_relu)
     inputs = tf.concat([inputs, route_1], axis=-1)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c4_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_3', leaky_relu)
     inputs = tf.concat([route, inputs], axis=-1)
     c4 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(256 * cfgs.CSPNET_SHRINK)
-    inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c5_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+    inputs = _dwise_bn_act(inputs, is_training, 'c5_1', leaky_relu)
+    c5 = inputs
+    return c2, c3, c4, c5
+
+
+def cspdarknet53_tiny_dwise_focus(inputs, is_training):
+    init_conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
+    inputs = focus(inputs, init_conv_out, is_training)
+
+    conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
+    route = inputs
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_0', leaky_relu)
+    inputs = tf.concat([route, inputs], axis=-1)
+    inputs = tf.layers.max_pooling2d(inputs, 3, 2, padding='SAME')
+
+    conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_1', leaky_relu)
+    route = inputs
+    inputs = route_group(inputs, 2, 1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_1', leaky_relu)
+    route_1 = inputs
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_2', leaky_relu)
+    inputs = tf.concat([inputs, route_1], axis=-1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c2_up_3', leaky_relu)
+    inputs = tf.concat([route, inputs], axis=-1)
+    c2 = inputs
+    inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
+
+    conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_1', leaky_relu)
+    route = inputs
+    inputs = route_group(inputs, 2, 1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_1', leaky_relu)
+    route_1 = inputs
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_2', leaky_relu)
+    inputs = tf.concat([inputs, route_1], axis=-1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c3_up_3', leaky_relu)
+    inputs = tf.concat([route, inputs], axis=-1)
+    c3 = inputs
+    inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
+
+    conv_out = _make_divisible(128 * cfgs.CSPNET_SHRINK)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_1', leaky_relu)
+    route = inputs
+    inputs = route_group(inputs, 2, 1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_1', leaky_relu)
+    route_1 = inputs
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_2', leaky_relu)
+    inputs = tf.concat([inputs, route_1], axis=-1)
+    inputs = _dwise_bn_act(inputs, is_training, 'c4_up_3', leaky_relu)
+    inputs = tf.concat([route, inputs], axis=-1)
+    c4 = inputs
+    inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
+
+    conv_out = _make_divisible(256 * cfgs.CSPNET_SHRINK)
+    inputs = _dwise_bn_act(inputs, is_training, 'c5_1', leaky_relu)
     c5 = inputs
     return c2, c3, c4, c5

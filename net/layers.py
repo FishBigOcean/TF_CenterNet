@@ -85,6 +85,11 @@ def _shuffle(inputs, group=2):
         return inputs
 
 
+def route_group(input_layer, groups, group_id):
+    conv_group = tf.split(input_layer, num_or_size_splits=groups, axis=-1)
+    return conv_group[group_id]
+
+
 def upsampling(inputs, method="deconv", output_dim=24):
     assert method in ['resize', 'deconv', 'complex']
 
@@ -124,21 +129,28 @@ def _dwise_bn_act(inputs, is_training, name):
     return out
 
 
-def context_module(inputs, is_training):
+def context_module_dwise(inputs, is_training):
     context_up = _dwise_bn_act(inputs, is_training, 'context_up')
     context_down = _dwise_bn_act(inputs, is_training, 'context_down1')
     context_down = _dwise_bn_act(context_down, is_training, 'context_down2')
     return context_up, context_down
 
 
+# def context_module_dwise(inputs, is_training):
+#     context_up = _dwise_bn_act(inputs, is_training, 'context_up')
+#     context_down = _dwise_bn_act(context_up, is_training, 'context_down')
+#     return context_up, context_down
+
+
 # depth_wise
-# def detect_module(inputs, channel, kernel_size, is_training):
-#     # up = _conv_bn_relu(inputs, channel, kernel_size, 'detect_up', use_bias=False, is_training=is_training,
-#     #                    activation=hard_swish)
-#     up = _dwise_bn_act(inputs, is_training, 'detect_up')
-#     context_up, context_down = context_module(up, is_training)
-#     out = tf.concat([up, context_up, context_down], axis=-1)
-#     return out
+def detect_module_dwise(inputs, channel, kernel_size, is_training):
+    # up = _conv_bn_relu(inputs, channel, kernel_size, 'detect_up', use_bias=False, is_training=is_training,
+    #                    activation=hard_swish)
+    up = _dwise_bn_act(inputs, is_training, 'detect_up')
+    # rout = route_group(up, 2, 1)
+    context_up, context_down = context_module_dwise(up, is_training)
+    out = tf.concat([up, context_up, context_down], axis=-1)
+    return out
 
 
 def context_module_conv(inputs, is_training):
@@ -149,7 +161,7 @@ def context_module_conv(inputs, is_training):
     return context_up, context_down
 
 # conv
-def detect_module(inputs, channel, kernel_size, is_training):
+def detect_module_conv(inputs, channel, kernel_size, is_training):
     up = _conv_bn_relu(inputs, channel, kernel_size, 'detect_up', use_bias=False, is_training=is_training,
                        activation=hard_swish)
     context_up, context_down = context_module_conv(up, is_training)

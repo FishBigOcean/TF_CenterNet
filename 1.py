@@ -66,8 +66,8 @@
 #             cv2.imwrite(out_dir_list[cls] + '/' + img, im)
 # print(num)
 
-from PIL import Image
-import imagehash, cv2, os
+# rom PIL import Image
+# import imagehash, cv2, os
 
 
 # def cal_hamming(a, b):
@@ -138,3 +138,244 @@ import imagehash, cv2, os
 #             print("The number of photos which were processed is ", processed_number)
 #             break
 
+# import cv2
+# import numpy as np
+#
+#
+# def beauty_face(img):
+#     '''
+#     Dest =(Src * (100 - Opacity) + (Src + 2 * GuassBlur(EPFFilter(Src) - Src + 128) - 256) * Opacity) /100 ;
+#     https://my.oschina.net/wujux/blog/1563461
+#     '''
+#     # int value1 = 3, value2 = 1; 磨皮程度与细节程度的确定
+#     v1 = 5
+#     v2 = 3
+#     dx = v1 * 5  # 双边滤波参数之一
+#     fc = v1 * 12.5  # 双边滤波参数之一
+#     p = 0.1
+#     temp1 = cv2.bilateralFilter(img, dx, fc, fc)
+#     temp2 = cv2.subtract(temp1, img)
+#     temp2 = cv2.add(temp2, (10, 10, 10, 128))
+#     temp3 = cv2.GaussianBlur(temp2, (2 * v2 - 1, 2 * v2 - 1), 0)
+#     temp4 = cv2.add(img, temp3)
+#     dst = cv2.addWeighted(img, p, temp4, 1 - p, 0.0)
+#     dst = cv2.add(dst, (10, 10, 10, 255))
+#     return dst
+#
+#
+# def beauty_face2(img):
+#     '''
+#     Dest =(Src * (100 - Opacity) + (Src + 2 * GuassBlur(EPFFilter(Src) - Src + 128) - 256) * Opacity) /100 ;
+#     '''
+#     # int value1 = 3, value2 = 1; 磨皮程度与细节程度的确定
+#     v1 = 5
+#     v2 = 3
+#     dx = v1 * 5  # 双边滤波参数之一
+#     fc = v1 * 12.5  # 双边滤波参数之一
+#     p = 0.1
+#     temp1 = cv2.bilateralFilter(img, dx, fc, fc)
+#     temp2 = cv2.subtract(temp1, img)
+#     temp2 = cv2.add(temp2, (10, 10, 10, 128))
+#     temp3 = cv2.GaussianBlur(temp2, (2 * v2 - 1, 2 * v2 - 1), 0)
+#     temp4 = cv2.subtract(cv2.add(cv2.add(temp3, temp3), img), (10, 10, 10, 255))
+#     dst = cv2.addWeighted(img, p, temp4, 1 - p, 0.0)
+#     dst = cv2.add(dst, (10, 10, 10, 255))
+#     return dst
+#
+# img = cv2.imread('D:/dataset/hand_samples_sunzhi/new-all/process/all/new_1569_1.1_flip.jpg')
+# dst = beauty_face(img)
+# dst2 = beauty_face2(img)
+# cv2.imshow("SRC", img)
+# cv2.imshow("DST", dst)
+# cv2.imshow('dst2', dst2)
+#
+# cv2.waitKey()
+
+
+#
+# import cv2, random, math
+# import numpy as np
+#
+# def random_affine(img, targets=(), degrees=10, translate=.1, scale=0.3, shear=0, border=(0, 0)):
+#     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
+#     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
+#     # targets = [cls, xyxy]
+#
+#     height = img.shape[0] + border[0] * 2  # shape(h,w,c)
+#     width = img.shape[1] + border[1] * 2
+#
+#     # Rotation and Scale
+#     R = np.eye(3)
+#     a = random.uniform(-degrees, degrees)
+#     # a += random.choice([-180, -90, 0, 90])  # add 90deg rotations to small rotations
+#     s = random.uniform(1 - scale, 1 + scale)
+#     # s = 2 ** random.uniform(-scale, scale)
+#     R[:2] = cv2.getRotationMatrix2D(angle=a, center=(img.shape[1] / 2, img.shape[0] / 2), scale=s)
+#
+#     # Translation
+#     T = np.eye(3)
+#     T[0, 2] = random.uniform(-translate, translate) * img.shape[1] + border[1]  # x translation (pixels)
+#     T[1, 2] = random.uniform(-translate, translate) * img.shape[0] + border[0]  # y translation (pixels)
+#
+#     # Shear
+#     S = np.eye(3)
+#     S[0, 1] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # x shear (deg)
+#     S[1, 0] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # y shear (deg)
+#
+#     # Combined rotation matrix
+#     M = S @ T @ R  # ORDER IS IMPORTANT HERE!!
+#     if (border[0] != 0) or (border[1] != 0) or (M != np.eye(3)).any():  # image changed
+#         img = cv2.warpAffine(img, M[:2], dsize=(width, height), flags=cv2.INTER_LINEAR, borderValue=(114, 114, 114))
+#
+#     # Transform label coordinates
+#     n = len(targets)
+#     if n:
+#         # cls x1, y1, x2, y2
+#         # warp points
+#         xy = np.ones((n * 4, 3))
+#         xy[:, :2] = targets[:, [1, 2, 3, 4, 1, 4, 3, 2]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
+#         xy = (xy @ M.T)[:, :2].reshape(n, 8)
+#
+#         # xy2 = np.ones((n * 4, 3))
+#         # xy2[:, :2] = np.sum(targets[:, [1, 2, 3, 4, 1, 4, 3, 4, 3, 2, 3, 2, 1, 2, 1, 4]].reshape(n * 4, 2, 2), axis=1) / 2
+#         # xy2 = (xy2 @ M.T)[:, :2].reshape(n, 8)
+#
+#         # create new boxes
+#         x = xy[:, [0, 2, 4, 6]]
+#         y = xy[:, [1, 3, 5, 7]]
+#         xy = np.concatenate((x.min(1), y.min(1), x.max(1), y.max(1))).reshape(4, n).T
+#
+#         # x2 = xy2[:, [0, 2, 4, 6]]
+#         # y2 = xy2[:, [1, 3, 5, 7]]
+#         # xy2 = np.concatenate((x2.min(1), y2.min(1), x2.max(1), y2.max(1))).reshape(4, n).T
+#         # xy = xy2
+#
+#         # apply angle-based reduction of bounding boxes
+#         radians = a * math.pi / 180
+#         reduction = max(abs(math.sin(radians)), abs(math.cos(radians))) ** 16
+#         x = (xy[:, 2] + xy[:, 0]) / 2
+#         y = (xy[:, 3] + xy[:, 1]) / 2
+#         w = (xy[:, 2] - xy[:, 0]) * reduction
+#         h = (xy[:, 3] - xy[:, 1]) * reduction
+#         xy = np.concatenate((x - w / 2, y - h / 2, x + w / 2, y + h / 2)).reshape(4, n).T
+#
+#         # reject warped points outside of image
+#         xy[:, [0, 2]] = xy[:, [0, 2]].clip(0, width)
+#         xy[:, [1, 3]] = xy[:, [1, 3]].clip(0, height)
+#         w = xy[:, 2] - xy[:, 0]
+#         h = xy[:, 3] - xy[:, 1]
+#         area = w * h
+#         area0 = (targets[:, 3] - targets[:, 1]) * (targets[:, 4] - targets[:, 2])
+#         ar = np.maximum(w / (h + 1e-16), h / (w + 1e-16))  # aspect ratio
+#         i = (w > 2) & (h > 2) & (area / (area0 * s + 1e-16) > 0.2) & (ar < 20)
+#
+#         targets = targets[i]
+#         targets[:, 1:5] = xy[i]
+#
+#     return img, targets
+#
+# img = cv2.imread('D:/dataset/hand_samples_sunzhi/images-new/heart_zhubo_20171113000_265.jpg')
+# boxes = np.array([[0, 373, 352, 608, 485]])
+# img2, boxes2 = random_affine(img, boxes)
+# boxes = boxes[0][1:]
+# boxes2 = boxes2[0][1:]
+# cv2.rectangle(img, (boxes[0], boxes[1]), (boxes[2], boxes[3]), (0, 255, 0), 3)
+# cv2.rectangle(img2, (boxes2[0], boxes2[1]), (boxes2[2], boxes2[3]), (0, 255, 0), 3)
+# cv2.imshow('img', img)
+# cv2.imshow('img2', img2)
+# cv2.waitKey()
+
+
+import numpy as np
+import math
+from PIL import Image
+import cv2, random
+import cfgs
+
+def load_mosaic():
+    # loads images in a mosaic
+    labels4 = []
+    s = cfgs.INPUT_IMAGE_W
+    yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in [-cfgs.INPUT_IMAGE_H, -cfgs.INPUT_IMAGE_W]]  # mosaic center x, y
+    for i in range(4):
+        # Load image
+        img, bbox = load_random_img_label()
+        img, [bbox] = image_preprocess(np.copy(img), [cfgs.INPUT_IMAGE_H * 2, cfgs.INPUT_IMAGE_W * 2], np.copy([bbox]))
+        h, w, _ = img.shape
+        # place img in img4
+        if i == 0:  # top left
+            img4 = np.full((s * 2, s * 2, img.shape[2]), 114, dtype=np.uint8)  # base image with 4 tiles
+            x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc  # xmin, ymin, xmax, ymax (large image)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (h + (y2a - y1a)) // 2  # xmin, ymin, xmax, ymax (small image)
+        elif i == 1:  # top right
+            x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, s * 2), yc
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (h + (y2a - y1a)) // 2
+        elif i == 2:  # bottom left
+            x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (h + (y2a - y1a)) // 2
+        elif i == 3:  # bottom right
+            x1a, y1a, x2a, y2a = xc, yc, min(xc + w, s * 2), min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (h + (y2a - y1a)) // 2
+
+        img4[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]  # img4[ymin:ymax, xmin:xmax]
+        padw = x1a - x1b
+        padh = y1a - y1b
+
+        # Labels
+        labels = bbox.copy()
+        if len(bbox) > 0:  # Normalized xywh to pixel xyxy format
+            labels[0] += padw
+            labels[1] += padh
+            labels[2] += padw
+            labels[3] += padh
+        labels4.append([labels])
+    print(labels4)
+    # Concat/clip labels
+    if len(labels4):
+        labels4 = np.concatenate(labels4, 0)
+        # np.clip(labels4[:, 1:] - s / 2, 0, s, out=labels4[:, 1:])  # use with center crop
+        np.clip(labels4[:, :4], 0, 2 * s, out=labels4[:, :4])  # use with random_affine
+    return img4, labels4
+
+def load_random_img_label():
+    with open(cfgs.TRAIN_DATA_FILE) as f_read:
+        read_lines = f_read.readlines()
+    length = len(read_lines)
+    index = random.randint(0, length - 1)
+    line = read_lines[index].split(' ')
+    img = cv2.imread(line[0])
+    bbox = [int(i) for i in line[1].split(',')]
+    return img, bbox
+
+def image_preprocess(image, target_size, gt_boxes=None):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+
+    ih, iw = target_size
+    h, w, _ = image.shape
+
+    scale = min(iw / w, ih / h)
+    nw, nh = int(scale * w), int(scale * h)
+    image_resized = cv2.resize(image, (nw, nh))
+
+    # image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0, dtype=np.float32)
+    means = np.array(cfgs.USED_MEANS, np.float32).reshape((1, 1, 3))
+    std = np.array(cfgs.USED_STD, np.float32).reshape((1, 1, 3))
+    image_paded = np.ones((ih, iw, 3), dtype=np.float32)
+    image_paded = image_paded * means * 255
+    dw, dh = (iw - nw) // 2, (ih - nh) // 2
+    image_paded[dh: nh + dh, dw: nw + dw, :] = image_resized
+    # image_paded = image_paded / 255.
+    # image_paded = ((image_paded - means) / std).astype(np.float32)
+    image_paded = cv2.cvtColor(image_paded, cv2.COLOR_RGB2BGR).astype(np.float32)
+
+    if gt_boxes is None:
+        return image_paded
+
+    else:
+        gt_boxes[:, [0, 2]] = gt_boxes[:, [0, 2]] * scale + dw
+        gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
+        return image_paded, gt_boxes
+
+img, bbox = load_mosaic()
+cv2.imshow('img1', img)
+cv2.waitKey()

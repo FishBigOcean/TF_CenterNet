@@ -1,5 +1,7 @@
 import tensorflow as tf
 import cfgs
+import math
+
 
 # # 目标的高斯分布，表示目标的中心点
 # batch_hm = np.zeros(
@@ -56,9 +58,39 @@ def smooth_l1_loss(y_pred, y_true, indices, mask, sigma=cfgs.SIGMA):
     abs_diff = tf.abs(diff)
     smoothL1_sign = tf.stop_gradient(tf.to_float(tf.less(abs_diff, 1. / sigma_2)))
     loss_box = tf.pow(diff, 2) * (sigma_2 / 2.0) * smoothL1_sign + (abs_diff - (0.5 / sigma_2)) * (
-                1.0 - smoothL1_sign)
+            1.0 - smoothL1_sign)
     total_loss = tf.reduce_sum(loss_box)
     loss = total_loss * 2 / (tf.reduce_sum(mask) + 1e-5)
+    return loss
+
+
+def ciou(y_pred, y_true, indices, mask):
+    b = tf.shape(y_pred)[0]
+    k = tf.shape(indices)[1]
+    c = tf.shape(y_pred)[-1]
+    y_pred = tf.reshape(y_pred, (b, -1, c))
+    indices = tf.cast(indices, tf.int32)
+    y_pred = tf.batch_gather(y_pred, indices)
+
+    pred_w, pred_h = y_pred[..., 0], y_pred[..., 1]
+    true_w, true_h = y_true[..., 0], y_true[..., 1]
+    inter_w = tf.minimum(pred_w, true_w)
+    inter_h = tf.minimum(pred_h, true_h)
+    inter_area = inter_w * inter_h
+    pred_area = pred_w * pred_h
+    true_area = true_w * true_h
+    union = tf.clip_by_value(pred_area + true_area - inter_area, 1e-5, float('inf'))
+    iou = tf.clip_by_value(inter_area / union, 1e-5, 1.)
+
+    v = (4 / (math.pi ** 2)) * tf.pow((tf.atan(pred_w / (pred_h + 1e-5)) - tf.atan(true_w / (true_h + 1e-5))), 2)
+    # flag = tf.stop_gradient(tf.to_float(tf.greater_equal(iou, 0.5)))
+    # alpha = tf.stop_gradient(flag * v / (1 - iou + v))
+    alpha = tf.stop_gradient(v / (1 - iou + v))
+    cious = iou - alpha * v
+    cious = tf.clip_by_value(cious, -1., 1.)
+    cious_loss = 1 - cious
+    total_loss = tf.reduce_sum(cious_loss * mask)
+    loss = total_loss / (tf.reduce_sum(mask) + 1e-5)
     return loss
 
 

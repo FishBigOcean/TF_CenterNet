@@ -1,0 +1,5 @@
+model_checkpoint_path: "centernet_test_loss=1.7267.ckpt-5"
+all_model_checkpoint_paths: "centernet_test_loss=3.4924.ckpt-1"
+all_model_checkpoint_paths: "centernet_test_loss=2.1401.ckpt-2"
+all_model_checkpoint_paths: "centernet_test_loss=1.8400.ckpt-4"
+all_model_checkpoint_paths: "centernet_test_loss=1.7267.ckpt-5"

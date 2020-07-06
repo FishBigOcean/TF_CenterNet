@@ -11,7 +11,7 @@ from utils.image import get_affine_transform, affine_transform
 from utils.utils import image_preprocess, py_nms, post_process, bboxes_draw_on_img, read_class_names
 
 ckpt_path = './checkpoint/' + cfgs.VERSION
-mode = 3  # 1 GPU 2 CPU 3 single-CPU
+mode = 1  # 1 GPU 2 CPU 3 single-CPU
 
 if mode == 1:
     sess = tf.Session()
@@ -98,7 +98,8 @@ def inference_image():
         image_data = image_data[np.newaxis, ...]
 
         t0 = time.time()
-        detections = sess.run(det, feed_dict={inputs: image_data})
+        for i in range(100):
+            detections = sess.run(det, feed_dict={inputs: image_data})
         print('Inferencce took %.1f ms (%.2f fps)' % ((time.time() - t0) * 1000, 1 / (time.time() - t0)))
         detections = post_process(detections, original_image_size, [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
                                   cfgs.DOWN_RATIO,
@@ -131,6 +132,14 @@ def inference_image():
 
 if __name__ == "__main__":
     # 1 - 11
-    inference_video('D:/dataset/cc_4/1.flv')
-    # inference_video(0)
-    # inference_image()
+    mode = 1
+    if mode == 1:
+        for i in range(11):
+            try:
+                inference_video('D:/dataset/cc_4/%d.flv' % (i + 1))
+            except:
+                continue
+    elif mode == 2:
+        inference_video(0)
+    else:
+        inference_image()
