@@ -24,13 +24,13 @@ class CenterNet():
             # c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
 
             # cspdarknet_dw
-            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
+            c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
 
             # cspdarknet_dw_focus
             # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise_focus(inputs=inputs, is_training=self.is_training)
 
             # # cspdarknet
-            c2, c3, c4, c5 = cspnet.cspdarknet53_tiny(inputs=inputs, is_training=self.is_training)
+            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny(inputs=inputs, is_training=self.is_training)
 
             channel = 32
             p5 = _conv(c5, channel, [1, 1], is_training=self.is_training)
@@ -64,9 +64,9 @@ class CenterNet():
 
             # features = _conv(p2, channel, [3, 3], is_training=self.is_training)
 
-            # features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)
+            features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)
 
-            features = detect_module_conv(p2, channel, [3, 3], is_training=self.is_training)
+            # features = detect_module_conv(p2, channel, [3, 3], is_training=self.is_training)
 
         with tf.variable_scope('detector'):
             hm = tf.layers.conv2d(features, cfgs.NUM_CLASS, 1, 1, padding='valid', activation=tf.nn.sigmoid,
@@ -83,7 +83,7 @@ class CenterNet():
 
     def compute_loss(self, true_hm, true_wh, true_reg, reg_mask, ind):
         hm_loss = loss.focal_loss(self.pred_hm, true_hm) * cfgs.HM_LOSS_WEIGHT
-        wh_loss = loss.ciou(self.pred_wh, true_wh, ind, reg_mask) * cfgs.WH_LOSS_WEIGHT
+        wh_loss = loss.reg_l1_loss(self.pred_wh, true_wh, ind, reg_mask) * cfgs.WH_LOSS_WEIGHT
         if cfgs.ADD_REG:
             reg_loss = loss.reg_l1_loss(self.pred_reg, true_reg, ind, reg_mask) * cfgs.REG_LOSS_WEIGHT
         else:

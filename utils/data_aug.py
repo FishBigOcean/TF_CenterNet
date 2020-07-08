@@ -121,7 +121,7 @@ def random_affine(image, bboxes=(), degrees=10, translate=.1, scale=0.5, shear=0
     # Combined rotation matrix
     M = S @ T @ R  # ORDER IS IMPORTANT HERE!!
     if (border[0] != 0) or (border[1] != 0) or (M != np.eye(3)).any():  # image changed
-        image = cv2.warpAffine(image, M[:2], dsize=(width, height), flags=cv2.INTER_LINEAR, borderValue=(114, 114, 114))
+        image = cv2.warpAffine(image, M[:2], dsize=(width, height), flags=cv2.INTER_LINEAR, borderValue=(109, 115, 125))
 
     # Transform label coordinates
     n = len(bboxes)
@@ -307,3 +307,24 @@ def random_color_distort(img, brightness_delta=32, hue_vari=18, sat_vari=0.5, va
     img = cv2.cvtColor(img_hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
     return img
+
+
+def skinMask(img):
+    skinCrCbHist = np.zeros((256, 256), dtype=np.uint8)
+    cv2.ellipse(skinCrCbHist, (113, 155), (23, 25), 43, 0, 360, (255, 255, 255), -1)
+    YCrCb = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+    (y, Cr, Cb) = cv2.split(YCrCb)
+    (x, y) = Cr.shape
+    skinCrCbHist = np.array(skinCrCbHist)
+    cr = np.array(Cr, dtype=np.uint8).reshape([x * y, ])
+    cb = np.array(Cb, dtype=np.uint8).reshape([x * y, ])
+    skin = skinCrCbHist[cr, cb]
+    skin = np.clip(skin, 0, 1)
+    kernel = np.ones((5, 5), np.uint8)
+    skin.resize([x, y])
+    for i in range(1):
+        skin = cv2.morphologyEx(skin, cv2.MORPH_ELLIPSE, kernel)
+    for i in range(4):
+        skin = cv2.morphologyEx(skin, cv2.MORPH_DILATE, kernel)
+    res = img * np.expand_dims(skin, -1)
+    return res

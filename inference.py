@@ -132,7 +132,7 @@ def inference_image():
 
 if __name__ == "__main__":
     # 1 - 11
-    mode = 1
+    mode = 3
     if mode == 1:
         for i in range(11):
             try:

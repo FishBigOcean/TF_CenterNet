@@ -19,7 +19,7 @@ def process_data(line, use_aug):
         raise KeyError("%s does not exist ... " % image_path)
     image = np.array(cv2.imread(image_path))
     labels = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in s[1:]])
-
+    # image = skinMask(image)
     if use_aug:
         if not cfgs.USE_ROTATE:
             # image, labels = random_horizontal_flip(image, labels)

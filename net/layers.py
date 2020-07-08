@@ -12,8 +12,10 @@ def _bn(inputs, is_training):
     )
     return bn
 
+def leaky_relu(x, name='leaky_relu'):
+    return tf.nn.leaky_relu(x, alpha=0.1, name=name)
 
-def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=tf.nn.relu6, is_training=False,
+def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=leaky_relu, is_training=False,
           use_bn=True):
     if use_bn:
         conv = tf.layers.conv2d(
@@ -143,13 +145,20 @@ def context_module_dwise(inputs, is_training):
 
 
 # depth_wise
+# def detect_module_dwise(inputs, channel, kernel_size, is_training):
+#     # up = _conv_bn_relu(inputs, channel, kernel_size, 'detect_up', use_bias=False, is_training=is_training,
+#     #                    activation=hard_swish)
+#     up = _dwise_bn_act(inputs, is_training, 'detect_up')
+#     # rout = route_group(up, 2, 1)
+#     context_up, context_down = context_module_dwise(up, is_training)
+#     out = tf.concat([up, context_up, context_down], axis=-1)
+#     return out
+
+
 def detect_module_dwise(inputs, channel, kernel_size, is_training):
-    # up = _conv_bn_relu(inputs, channel, kernel_size, 'detect_up', use_bias=False, is_training=is_training,
-    #                    activation=hard_swish)
-    up = _dwise_bn_act(inputs, is_training, 'detect_up')
-    # rout = route_group(up, 2, 1)
-    context_up, context_down = context_module_dwise(up, is_training)
-    out = tf.concat([up, context_up, context_down], axis=-1)
+    out = _dwise_conv(inputs, name='detect_up')
+    out = _batch_normalization_layer(out, is_training=is_training, name='detect_up_bn')
+    out = leaky_relu(out)
     return out
 
 

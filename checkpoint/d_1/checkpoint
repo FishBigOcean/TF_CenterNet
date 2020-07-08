@@ -1,0 +1,23 @@
+model_checkpoint_path: "centernet_test_loss=1.5156.ckpt-176"
+all_model_checkpoint_paths: "centernet_test_loss=11.4142.ckpt-1"
+all_model_checkpoint_paths: "centernet_test_loss=4.7206.ckpt-3"
+all_model_checkpoint_paths: "centernet_test_loss=3.4300.ckpt-4"
+all_model_checkpoint_paths: "centernet_test_loss=2.5298.ckpt-7"
+all_model_checkpoint_paths: "centernet_test_loss=2.2030.ckpt-12"
+all_model_checkpoint_paths: "centernet_test_loss=2.1521.ckpt-13"
+all_model_checkpoint_paths: "centernet_test_loss=2.0414.ckpt-15"
+all_model_checkpoint_paths: "centernet_test_loss=1.8178.ckpt-26"
+all_model_checkpoint_paths: "centernet_test_loss=1.8061.ckpt-45"
+all_model_checkpoint_paths: "centernet_test_loss=1.7992.ckpt-60"
+all_model_checkpoint_paths: "centernet_test_loss=1.7124.ckpt-79"
+all_model_checkpoint_paths: "centernet_test_loss=1.5761.ckpt-103"
+all_model_checkpoint_paths: "centernet_test_loss=1.5156.ckpt-176" 1
+all_model_checkpoint_paths: "centernet_test_loss=1.5113.ckpt-208"
+all_model_checkpoint_paths: "centernet_test_loss=1.4844.ckpt-255"
+all_model_checkpoint_paths: "centernet_test_loss=1.4691.ckpt-272" 1
+all_model_checkpoint_paths: "centernet_test_loss=1.4627.ckpt-273"
+all_model_checkpoint_paths: "centernet_test_loss=1.4093.ckpt-290" 1
+
+
+# c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
+# features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)  1

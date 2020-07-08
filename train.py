@@ -18,7 +18,7 @@ def train():
     num_train_imgs = len(open(cfgs.TRAIN_DATA_FILE, 'r').readlines())
     num_train_batch = int(math.ceil(float(num_train_imgs) / cfgs.BATCH_SIZE))
     num_test_imgs = len(open(cfgs.TEST_DATA_FILE, 'r').readlines())
-    num_test_batch = int(math.ceil(float(num_test_imgs) / 4))
+    num_test_batch = int(math.ceil(float(num_test_imgs) / cfgs.BATCH_SIZE * 4))
 
     # train dataset
     train_dataset = tf.data.TextLineDataset(cfgs.TRAIN_DATA_FILE)
@@ -32,7 +32,8 @@ def train():
 
     # test dataset
     test_dataset = tf.data.TextLineDataset(cfgs.TEST_DATA_FILE)
-    test_dataset = test_dataset.batch(4)
+    test_dataset = test_dataset.shuffle(num_test_imgs)
+    test_dataset = test_dataset.batch(cfgs.BATCH_SIZE // 4)
     test_dataset = test_dataset.map(lambda x: tf.py_func(get_data, inp=[x, False],
                                                          Tout=[tf.float32, tf.float32, tf.float32, tf.float32,
                                                                tf.float32, tf.float32]),
@@ -81,6 +82,21 @@ def train():
             with tf.control_dependencies([optimizer, global_step_update]):
                 train_op = tf.no_op()
 
+    elif cfgs.LR_TPYE == 'cosine_decay_restarts':
+        global_step = tf.Variable(1.0, dtype=tf.float32, trainable=False, name='global_step')
+        warmup_steps = tf.constant(cfgs.WARM_UP_EPOCHS_CR * num_train_batch, dtype=tf.float32, name='warmup_steps')
+        learning_rate = tf.cond(
+            pred=global_step < warmup_steps,
+            true_fn=lambda: global_step / warmup_steps * cfgs.INIT_LR_CR,
+            false_fn=lambda: tf.train.cosine_decay_restarts(cfgs.INIT_LR_CR, global_step, cfgs.FIRST, cfgs.T_MUL, cfgs.M_MUL)
+        )
+        global_step_update = tf.assign_add(global_step, 1.0)
+
+        optimizer = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
+        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+            with tf.control_dependencies([optimizer, global_step_update]):
+                train_op = tf.no_op()
+
     else:
         global_step = tf.Variable(0, trainable=False)
         if cfgs.LR_TPYE == "exponential":
@@ -112,7 +128,8 @@ def train():
             if os.path.exists(logdir): shutil.rmtree(logdir)
             os.mkdir(logdir)
             write_op = tf.summary.merge_all()
-            summary_writer = tf.summary.FileWriter(logdir, graph=sess.graph)
+            train_writer = tf.summary.FileWriter(logdir + '/train', graph=sess.graph)
+            eval_writer = tf.summary.FileWriter(logdir + '/eval')
 
             ckptdir = './checkpoint/' + cfgs.VERSION
             if os.path.exists(ckptdir): shutil.rmtree(ckptdir)
@@ -131,18 +148,19 @@ def train():
                 _, summary, train_step_loss, global_step_val, _hm_loss, _wh_loss, _reg_loss, _regular_loss = sess.run(
                     [train_op, write_op, total_loss, global_step, hm_loss, wh_loss, reg_loss, regular_loss],
                     feed_dict={is_training: True})
-
+                print(global_step_val)
                 train_epoch_loss.append(train_step_loss)
                 train_hm_loss.append(_hm_loss)
                 train_wh_loss.append(_wh_loss)
                 train_reg_loss.append(_reg_loss)
                 train_regular_loss.append(_regular_loss)
-                summary_writer.add_summary(summary, global_step_val)
+                train_writer.add_summary(summary, global_step_val)
                 pbar.set_description("train loss: %.2f" % train_step_loss)
 
             sess.run(testset_init_op)
             for j in range(num_test_batch):
-                test_step_loss = sess.run(total_loss, feed_dict={is_training: False})
+                test_step_loss, summary = sess.run([total_loss, write_op], feed_dict={is_training: False})
+                eval_writer.add_summary(summary, global_step_val - num_train_batch + num_train_batch * (j + 1) // num_test_batch)
                 test_epoch_loss.append(test_step_loss)
 
             train_epoch_loss, test_epoch_loss = np.mean(train_epoch_loss), np.mean(test_epoch_loss)
