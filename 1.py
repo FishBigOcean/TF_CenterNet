@@ -286,110 +286,113 @@
 # cv2.waitKey()
 
 
-# import numpy as np
-# import math
-# from PIL import Image
-# import cv2, random
-# import cfgs
-#
-#
-# def load_mosaic():
-#     # loads images in a mosaic
-#     labels4 = []
-#     s = cfgs.INPUT_IMAGE_W
-#     yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in
-#               [-cfgs.INPUT_IMAGE_H // 2, -cfgs.INPUT_IMAGE_W // 2]]  # mosaic center x, y
-#     for i in range(4):
-#         # Load image
-#         img, bbox = load_random_img_label()
-#         img, [bbox] = image_preprocess(np.copy(img), [cfgs.INPUT_IMAGE_H * 2, cfgs.INPUT_IMAGE_W * 2], np.copy([bbox]))
-#         h, w, _ = img.shape
-#         # place img in img4
-#         if i == 0:  # top left
-#             img4 = np.ones((s * 2, s * 2, img.shape[2]), dtype=np.uint8)  # base image with 4 tiles
-#             means = np.array(cfgs.USED_MEANS_255[::-1], np.uint8).reshape((1, 1, 3))
-#             print(means)
-#             img4 = img4 * means
-#             x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc  # xmin, ymin, xmax, ymax (large image)
-#             x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
-#                         h + (y2a - y1a)) // 2  # xmin, ymin, xmax, ymax (small image)
-#         elif i == 1:  # top right
-#             x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, s * 2), yc
-#             x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
-#                         h + (y2a - y1a)) // 2
-#         elif i == 2:  # bottom left
-#             x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(s * 2, yc + h)
-#             x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
-#                         h + (y2a - y1a)) // 2
-#         elif i == 3:  # bottom right
-#             x1a, y1a, x2a, y2a = xc, yc, min(xc + w, s * 2), min(s * 2, yc + h)
-#             x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
-#                         h + (y2a - y1a)) // 2
-#
-#         img4[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]  # img4[ymin:ymax, xmin:xmax]
-#         padw = x1a - x1b
-#         padh = y1a - y1b
-#
-#         # Labels
-#         labels = bbox.copy()
-#         if len(bbox) > 0:  # Normalized xywh to pixel xyxy format
-#             labels[0] += padw
-#             labels[1] += padh
-#             labels[2] += padw
-#             labels[3] += padh
-#         labels[[0, 2]] = np.clip(labels[[0, 2]], x1a, x2a)
-#         labels[[1, 3]] = np.clip(labels[[1, 3]], y1a, y2a)
-#         labels4.append([labels])
-#         # Concat/clip labels
-#     if len(labels4):
-#         labels4 = np.concatenate(labels4, 0)
-#         # np.clip(labels4[:, 1:] - s / 2, 0, s, out=labels4[:, 1:])  # use with center crop
-#         np.clip(labels4[:, :4], 0, 2 * s, out=labels4[:, :4])  # use with random_affine
-#     return img4, labels4
-#
-#
-# def load_random_img_label():
-#     with open(cfgs.TRAIN_DATA_FILE) as f_read:
-#         read_lines = f_read.readlines()
-#     length = len(read_lines)
-#     index = random.randint(0, length - 1)
-#     line = read_lines[index].split(' ')
-#     img = cv2.imread(line[0])
-#     bbox = [int(i) for i in line[1].split(',')]
-#     return img, bbox
-#
-#
-# def image_preprocess(image, target_size, gt_boxes=None):
-#     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-#     ih, iw = target_size
-#     h, w, _ = image.shape
-#
-#     scale = min(iw / w, ih / h)
-#     nw, nh = int(scale * w), int(scale * h)
-#     image_resized = cv2.resize(image, (nw, nh))
-#     # image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0, dtype=np.float32)
-#     means = np.array(cfgs.USED_MEANS, np.float32).reshape((1, 1, 3))
-#     std = np.array(cfgs.USED_STD, np.float32).reshape((1, 1, 3))
-#     image_paded = np.ones((ih, iw, 3), dtype=np.float32)
-#     image_paded = image_paded * means * 255
-#     dw, dh = (iw - nw) // 2, (ih - nh) // 2
-#     image_paded[dh: nh + dh, dw: nw + dw, :] = image_resized
-#     image_paded = image_paded / 255.
-#     image_paded = ((image_paded - means) / std).astype(np.float32)
-#     image_paded = cv2.cvtColor(image_paded, cv2.COLOR_RGB2BGR).astype(np.float32)
-#
-#     if gt_boxes is None:
-#         return image_paded
-#     else:
-#         gt_boxes[:, [0, 2]] = gt_boxes[:, [0, 2]] * scale + dw
-#         gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
-#         return image_paded, gt_boxes
-#
-# img = cv2.imread('D:/dataset/hand_samples_sunzhi/new-all/process/image-v5-n/heart_plan_1510041135_75_1.0_flip.jpg')
-# img2 = load_mosaic()
-# cv2.imshow('img1', img)
-# cv2.imshow('img2', img2)
-# cv2.waitKey()
+import numpy as np
+import math
+from PIL import Image
+import cv2, random
+import cfgs
+
+
+def load_mosaic():
+    # loads images in a mosaic
+    labels4 = []
+    s = cfgs.INPUT_IMAGE_W
+    yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in
+              [-cfgs.INPUT_IMAGE_H // 2, -cfgs.INPUT_IMAGE_W // 2]]  # mosaic center x, y
+    for i in range(4):
+        # Load image
+        img, bbox = load_random_img_label()
+        img, [bbox] = image_preprocess(np.copy(img), [cfgs.INPUT_IMAGE_H * 2, cfgs.INPUT_IMAGE_W * 2], np.copy([bbox]))
+        # print(img[0, 0, :])
+        cv2.imshow('%d' % i, img)
+        h, w, _ = img.shape
+        # place img in img4
+        if i == 0:  # top left
+            img4 = np.ones((s * 2, s * 2, img.shape[2]), dtype=np.float32)
+            means = np.array(cfgs.USED_MEANS, np.float32).reshape((1, 1, 3)) * 255
+            img4 = img4 * means
+            img4 = img4.astype(np.uint8)
+            cv2.imshow('img4', img4)
+            print(img4[0, 0, :])
+            x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc  # xmin, ymin, xmax, ymax (large image)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                        h + (y2a - y1a)) // 2  # xmin, ymin, xmax, ymax (small image)
+        elif i == 1:  # top right
+            x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, s * 2), yc
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                        h + (y2a - y1a)) // 2
+        elif i == 2:  # bottom left
+            x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                        h + (y2a - y1a)) // 2
+        elif i == 3:  # bottom right
+            x1a, y1a, x2a, y2a = xc, yc, min(xc + w, s * 2), min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                        h + (y2a - y1a)) // 2
+
+        img4[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]  # img4[ymin:ymax, xmin:xmax]
+        padw = x1a - x1b
+        padh = y1a - y1b
+
+        # Labels
+        labels = bbox.copy()
+        if len(bbox) > 0:  # Normalized xywh to pixel xyxy format
+            labels[0] += padw
+            labels[1] += padh
+            labels[2] += padw
+            labels[3] += padh
+        labels[[0, 2]] = np.clip(labels[[0, 2]], x1a, x2a)
+        labels[[1, 3]] = np.clip(labels[[1, 3]], y1a, y2a)
+        labels4.append([labels])
+        # Concat/clip labels
+    if len(labels4):
+        labels4 = np.concatenate(labels4, 0)
+        # np.clip(labels4[:, 1:] - s / 2, 0, s, out=labels4[:, 1:])  # use with center crop
+        np.clip(labels4[:, :4], 0, 2 * s, out=labels4[:, :4])  # use with random_affine
+    return img4, labels4
+
+
+def load_random_img_label():
+    with open(cfgs.TRAIN_DATA_FILE) as f_read:
+        read_lines = f_read.readlines()
+    length = len(read_lines)
+    index = random.randint(0, length - 1)
+    line = read_lines[index].split(' ')
+    img = cv2.imread(line[0])
+    bbox = [int(i) for i in line[1].split(',')]
+    return img, bbox
+
+
+def image_preprocess(image, target_size, gt_boxes=None):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+    ih, iw = target_size
+    h, w, _ = image.shape
+    scale = min(iw / w, ih / h)
+    nw, nh = int(scale * w), int(scale * h)
+    image_resized = cv2.resize(image, (nw, nh))
+    # image_paded = np.full(shape=[ih, iw, 3], fill_value=128.0, dtype=np.float32)
+    means = np.array([108., 115., 125.], np.float32).reshape((1, 1, 3))
+    std = np.array(cfgs.USED_STD, np.float32).reshape((1, 1, 3))
+    image_paded = np.ones((ih, iw, 3), dtype=np.float32)
+    image_paded = image_paded * means
+    dw, dh = (iw - nw) // 2, (ih - nh) // 2
+    image_paded[dh: nh + dh, dw: nw + dw, :] = image_resized
+    # image_paded = image_paded / 255.
+    # image_paded = ((image_paded - means) / std).astype(np.float32)
+    image_paded = cv2.cvtColor(image_paded, cv2.COLOR_RGB2BGR).astype(np.uint8)
+    print(image[0, 0, :], image_paded[0, 0, :])
+
+    if gt_boxes is None:
+        return image_paded
+    else:
+        gt_boxes[:, [0, 2]] = gt_boxes[:, [0, 2]] * scale + dw
+        gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
+        return image_paded, gt_boxes
+
+img = cv2.imread('D:/dataset/hand_samples_sunzhi/new-all/process/image-v5-n/heart_plan_1510041135_75_1.0_flip.jpg')
+img2, label2 = load_mosaic()
+cv2.imshow('img2', img2)
+cv2.waitKey()
 
 # import cv2 as cv
 # import numpy as np
@@ -559,40 +562,40 @@
 #         break
 
 
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import cfgs
-style1 = []
-style2 = []
-N = 400
-
-with tf.Session() as sess:
-    global_step = tf.Variable(1.0, dtype=tf.float32, trainable=False, name='global_step')
-    warmup_steps = tf.constant(10, dtype=tf.float32, name='warmup_steps')
-    learing_rate1 = tf.cond(
-        pred=global_step < warmup_steps,
-        true_fn=lambda: global_step / warmup_steps * cfgs.INIT_LR_CR,
-        false_fn=lambda: tf.train.cosine_decay_restarts(cfgs.INIT_LR_CR, global_step, 180, cfgs.T_MUL,
-                                                        cfgs.M_MUL)
-    )
-    sess.run(tf.global_variables_initializer())
-    learing_rate2 = tf.train.cosine_decay(
-        learning_rate=0.001, global_step=global_step, decay_steps=50)
-    global_step_op = tf.assign_add(global_step, 1.0)
-    for step in range(N):
-        lr1 = sess.run([learing_rate1])
-        lr2 = sess.run([learing_rate2])
-        temp = sess.run([global_step_op])
-        style1.append(lr1)
-        style2.append(lr2)
-
-step = range(N)
-
-plt.plot(step, style1, 'g-', linewidth=2, label='cosine_decay_restarts')
-plt.plot(step, style2, 'r--', linewidth=1, label='cosine_decay')
-plt.title('cosine_decay_restarts')
-plt.xlabel('step')
-plt.ylabel('learing rate')
-plt.legend(loc='upper right')
-plt.tight_layout()
-plt.show()
+# import tensorflow as tf
+# import matplotlib.pyplot as plt
+# import cfgs
+# style1 = []
+# style2 = []
+# N = 400
+#
+# with tf.Session() as sess:
+#     global_step = tf.Variable(1.0, dtype=tf.float32, trainable=False, name='global_step')
+#     warmup_steps = tf.constant(10, dtype=tf.float32, name='warmup_steps')
+#     learing_rate1 = tf.cond(
+#         pred=global_step < warmup_steps,
+#         true_fn=lambda: global_step / warmup_steps * cfgs.INIT_LR_CR,
+#         false_fn=lambda: tf.train.cosine_decay_restarts(cfgs.INIT_LR_CR, global_step, 180, cfgs.T_MUL,
+#                                                         cfgs.M_MUL)
+#     )
+#     sess.run(tf.global_variables_initializer())
+#     learing_rate2 = tf.train.cosine_decay(
+#         learning_rate=0.001, global_step=global_step, decay_steps=50)
+#     global_step_op = tf.assign_add(global_step, 1.0)
+#     for step in range(N):
+#         lr1 = sess.run([learing_rate1])
+#         lr2 = sess.run([learing_rate2])
+#         temp = sess.run([global_step_op])
+#         style1.append(lr1)
+#         style2.append(lr2)
+#
+# step = range(N)
+#
+# plt.plot(step, style1, 'g-', linewidth=2, label='cosine_decay_restarts')
+# plt.plot(step, style2, 'r--', linewidth=1, label='cosine_decay')
+# plt.title('cosine_decay_restarts')
+# plt.xlabel('step')
+# plt.ylabel('learing rate')
+# plt.legend(loc='upper right')
+# plt.tight_layout()
+# plt.show()

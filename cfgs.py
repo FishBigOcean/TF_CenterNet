@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 
 # version
-VERSION = 'v1.6_5'
+VERSION = 'd_1'
 
 # dataset
 USED_MEANS = [0.490, 0.451, 0.429]
@@ -19,10 +19,10 @@ MAX_OBJ = 3
 ADD_REG = True
 
 # train
-TRAIN_DATA_FILE = './data/dataset/train-v6.txt'
+TRAIN_DATA_FILE = './data/dataset/train-v4.txt'
 BATCH_SIZE = 32
 TRAIN_BATCH = 336
-EPOCHS = 150
+EPOCHS = 400
 MAX_KEEP = 20
 SAVE_MIN = True
 WEIGHT_INITIALIZER = tf.variance_scaling_initializer(2, 'fan_avg', 'truncated_normal')
@@ -44,12 +44,12 @@ WARM_UP_EPOCHS = 2
 INIT_LR = 1e-3
 END_LR = 1e-6
 # cosine_decay_restarts
-WARM_UP_EPOCHS_CR = 4
+WARM_UP_EPOCHS_CR = 10
 INIT_LR_CR = 3e-3
 END_LR_CR = 1e-6
-FIRST = 60 * TRAIN_BATCH
-T_MUL = 0.8
-M_MUL = 0.8
+FIRST = 110 * TRAIN_BATCH
+T_MUL = 1.2
+M_MUL = 1.
 
 PRE_TRAIN = False
 USE_AUG = True

@@ -47,19 +47,19 @@ class CenterNet():
             reduce_dim_c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
             p2 = up_p3 + reduce_dim_c2
 
-            # c5_upsample = upsampling(c5, method='complex', output_dim=24)
-            # c4 =  _conv(c4, 24, [1, 1], is_training=self.is_training)
-            # p4 = tf.concat([c4, c5_upsample], axis=3)
+            # c5_upsample = upsampling(c5, method='complex', output_dim=channel)
+            # c4 =  _conv(c4, channel, [1, 1], is_training=self.is_training)
+            # p4 = c4 + c5_upsample
             # p4 = _shuffle(p4, 4)
             #
-            # c4_upsample = upsampling(p4, method='complex', output_dim=16)
-            # c3 = _conv(c3, 16, [1, 1], is_training=self.is_training)
-            # p3 = tf.concat([c3, c4_upsample], axis=3)
+            # c4_upsample = upsampling(p4, method='complex', output_dim=channel)
+            # c3 = _conv(c3, channel, [1, 1], is_training=self.is_training)
+            # p3 = c3 + c4_upsample
             # p3 = _shuffle(p3, 4)
             #
-            # c3_upsample = upsampling(p3, method='complex', output_dim=16)
-            # c2 = _conv(c2, 16, [1, 1], is_training=self.is_training)
-            # p2 = tf.concat([c2, c3_upsample], axis=3)
+            # c3_upsample = upsampling(p3, method='complex', output_dim=channel)
+            # c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
+            # p2 = c2 + c3_upsample
             # p2 = _shuffle(p2, 4)
 
             # features = _conv(p2, channel, [3, 3], is_training=self.is_training)

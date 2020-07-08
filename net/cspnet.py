@@ -189,66 +189,66 @@ def focus(inputs, out_channel, is_training):
 def cspdarknet53_tiny(inputs, is_training):
     init_conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=init_conv_out, kernel_size=3, name='init',
-                           use_bias=False, strides=2, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=2, is_training=is_training, activation=mish)
 
     conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_0',
-                           use_bias=False, strides=2, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=2, is_training=is_training, activation=mish)
 
     conv_out = _make_divisible(32 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c2_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route = inputs
     inputs = route_group(inputs, 2, 1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route_1 = inputs
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c2_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([inputs, route_1], axis=-1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c2_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([route, inputs], axis=-1)
     c2 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(64 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c3_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route = inputs
     inputs = route_group(inputs, 2, 1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c3_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route_1 = inputs
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c3_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([inputs, route_1], axis=-1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c3_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=relu6)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([route, inputs], axis=-1)
     c3 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(128 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c4_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route = inputs
     inputs = route_group(inputs, 2, 1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c4_up_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     route_1 = inputs
     inputs = _conv_bn_relu(inputs, filters_num=conv_out, kernel_size=3, name='c4_up_2',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([inputs, route_1], axis=-1)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c4_up_3',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     inputs = tf.concat([route, inputs], axis=-1)
     c4 = inputs
     inputs = tf.layers.max_pooling2d(inputs, 2, 2, padding='SAME')
 
     conv_out = _make_divisible(256 * cfgs.CSPNET_SHRINK)
     inputs = _conv_bn_relu(inputs, filters_num=conv_out * 2, kernel_size=3, name='c5_1',
-                           use_bias=False, strides=1, is_training=is_training, activation=hard_swish)
+                           use_bias=False, strides=1, is_training=is_training, activation=mish)
     c5 = inputs
     return c2, c3, c4, c5
 

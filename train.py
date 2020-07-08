@@ -148,7 +148,6 @@ def train():
                 _, summary, train_step_loss, global_step_val, _hm_loss, _wh_loss, _reg_loss, _regular_loss = sess.run(
                     [train_op, write_op, total_loss, global_step, hm_loss, wh_loss, reg_loss, regular_loss],
                     feed_dict={is_training: True})
-                print(global_step_val)
                 train_epoch_loss.append(train_step_loss)
                 train_hm_loss.append(_hm_loss)
                 train_wh_loss.append(_wh_loss)

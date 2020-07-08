@@ -4,6 +4,12 @@ from net.mobilenet_v3 import _conv_bn_relu, _dwise_conv, _batch_normalization_la
 import tensorflow.contrib.slim as slim
 
 
+def mish(x, name='mish'):
+    with tf.variable_scope(name):
+        mish = x * tf.tanh(tf.math.log(1 + tf.exp(x)))
+    return mish
+
+
 def _bn(inputs, is_training):
     bn = tf.layers.batch_normalization(
         inputs=inputs,
@@ -12,10 +18,12 @@ def _bn(inputs, is_training):
     )
     return bn
 
+
 def leaky_relu(x, name='leaky_relu'):
     return tf.nn.leaky_relu(x, alpha=0.1, name=name)
 
-def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=leaky_relu, is_training=False,
+
+def _conv(inputs, filters, kernel_size, strides=1, padding='same', activation=mish, is_training=False,
           use_bn=True):
     if use_bn:
         conv = tf.layers.conv2d(
@@ -116,8 +124,8 @@ def upsampling(inputs, method="deconv", output_dim=24):
         up = inputs[:, :, :, :input_dim // 2]
         down = inputs[:, :, :, input_dim // 2:]
 
-        up = _upsample_resize(up, output_dim//2, k_size=3)
-        down = _upsample_group_deconv(down, output_dim//2, group=4)
+        up = _upsample_resize(up, output_dim // 2, k_size=3)
+        down = _upsample_group_deconv(down, output_dim // 2, group=4)
         output = tf.concat([up, down], axis=3)
         output = _shuffle(output)
 
@@ -168,6 +176,7 @@ def context_module_conv(inputs, is_training):
     context_down = _conv(inputs, channel, 3, activation=hard_swish, is_training=is_training)
     context_down = _conv(context_down, channel, 3, activation=hard_swish, is_training=is_training)
     return context_up, context_down
+
 
 # conv
 def detect_module_conv(inputs, channel, kernel_size, is_training):
