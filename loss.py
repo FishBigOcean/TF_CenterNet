@@ -32,6 +32,23 @@ def focal_loss(hm_pred, hm_true):
     return loss
 
 
+def smooth_focal_loss(hm_pred, hm_true):
+    smooth_val = 0.05
+    pos_mask = tf.cast(tf.equal(hm_true, 1.), dtype=tf.float32)
+    neg_mask = tf.cast(tf.less(hm_true, 1.), dtype=tf.float32)
+    neg_weights = tf.pow(1. - hm_true, 4)
+
+    pos_loss = -tf.log(tf.clip_by_value(hm_pred + smooth_val, 1e-5, 1. - 1e-5)) * tf.pow(1. - smooth_val - hm_pred, 2) * pos_mask
+    neg_loss = -tf.log(tf.clip_by_value(1. + smooth_val - hm_pred, 1e-5, 1. - 1e-5)) * tf.pow(hm_pred - smooth_val, 2) * neg_weights * neg_mask
+
+    num_pos = tf.reduce_sum(pos_mask)
+    pos_loss = tf.reduce_sum(pos_loss) * cfgs.HM_POS_WEIGHT
+    neg_loss = tf.reduce_sum(neg_loss) * cfgs.HM_NEG_WEIGHT
+
+    loss = tf.cond(tf.greater(num_pos, 0), lambda: (pos_loss + neg_loss) / num_pos, lambda: neg_loss)
+    return loss
+
+
 def reg_l1_loss(y_pred, y_true, indices, mask):
     b = tf.shape(y_pred)[0]
     k = tf.shape(indices)[1]

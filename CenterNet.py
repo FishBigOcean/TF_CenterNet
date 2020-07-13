@@ -2,7 +2,7 @@ import tensorflow as tf
 import cfgs
 import loss
 from net import resnet, mobilenet, mobilenet_v3, cspnet
-from net.layers import _conv, upsampling, detect_module_dwise, _shuffle, detect_module_conv
+from net.layers import _conv, upsampling, detect_module_dwise, _shuffle, detect_module_conv, BFP
 import numpy as np
 
 
@@ -24,47 +24,35 @@ class CenterNet():
             # c2, c3, c4, c5 = mobilenet_v3.mobilenet_v3_small(inputs=inputs, is_training=self.is_training)
 
             # cspdarknet_dw
-            c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
+            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise(inputs=inputs, is_training=self.is_training)
 
             # cspdarknet_dw_focus
             # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny_dwise_focus(inputs=inputs, is_training=self.is_training)
 
             # # cspdarknet
-            # c2, c3, c4, c5 = cspnet.cspdarknet53_tiny(inputs=inputs, is_training=self.is_training)
+            c2, c3, c4, c5 = cspnet.cspdarknet53_tiny(inputs=inputs, is_training=self.is_training)
 
-            channel = 32
-            p5 = _conv(c5, channel, [1, 1], is_training=self.is_training)
-
-            up_p5 = upsampling(p5, method='resize')
-            reduce_dim_c4 = _conv(c4, channel, [1, 1], is_training=self.is_training)
-            p4 = up_p5 + reduce_dim_c4
-
-            up_p4 = upsampling(p4, method='resize')
-            reduce_dim_c3 = _conv(c3, channel, [1, 1], is_training=self.is_training)
-            p3 = up_p4 + reduce_dim_c3
-
-            up_p3 = upsampling(p3, method='resize')
-            reduce_dim_c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
-            p2 = up_p3 + reduce_dim_c2
-
-            # c5_upsample = upsampling(c5, method='complex', output_dim=channel)
-            # c4 =  _conv(c4, channel, [1, 1], is_training=self.is_training)
-            # p4 = c4 + c5_upsample
-            # p4 = _shuffle(p4, 4)
+            channel = 24
+            # p5 = _conv(c5, channel, [1, 1], is_training=self.is_training)
             #
-            # c4_upsample = upsampling(p4, method='complex', output_dim=channel)
-            # c3 = _conv(c3, channel, [1, 1], is_training=self.is_training)
-            # p3 = c3 + c4_upsample
-            # p3 = _shuffle(p3, 4)
+            # up_p5 = upsampling(p5, method='resize')
+            # reduce_dim_c4 = _conv(c4, channel, [1, 1], is_training=self.is_training)
+            # p4 = up_p5 + reduce_dim_c4
             #
-            # c3_upsample = upsampling(p3, method='complex', output_dim=channel)
-            # c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
-            # p2 = c2 + c3_upsample
-            # p2 = _shuffle(p2, 4)
+            # up_p4 = upsampling(p4, method='resize')
+            # reduce_dim_c3 = _conv(c3, channel, [1, 1], is_training=self.is_training)
+            # p3 = up_p4 + reduce_dim_c3
+            #
+            # up_p3 = upsampling(p3, method='resize')
+            # reduce_dim_c2 = _conv(c2, channel, [1, 1], is_training=self.is_training)
+            # p2 = up_p3 + reduce_dim_c2
 
-            # features = _conv(p2, channel, [3, 3], is_training=self.is_training)
+            p2 = BFP([c2, c3, c4, c5], self.is_training)
 
-            features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)
+
+            features = _conv(p2, channel, [3, 3], is_training=self.is_training)
+
+            # features = detect_module_dwise(p2, channel, [3, 3], is_training=self.is_training)
 
             # features = detect_module_conv(p2, channel, [3, 3], is_training=self.is_training)
 

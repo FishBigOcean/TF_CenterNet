@@ -2,7 +2,7 @@ import random
 import numpy as np
 import cv2, math
 from PIL import Image
-
+import cfgs
 
 def random_grid_mask(image, rotate=23, ratio=0.5, prob=1.):
     if np.random.rand() > prob:
@@ -92,7 +92,7 @@ def random_crop(image, bboxes):
     return image, bboxes
 
 
-def random_affine(image, bboxes=(), degrees=10, translate=.1, scale=0.5, shear=0, border=(0, 0)):
+def random_affine(image, bboxes=(), degrees=10, translate=0.05, scale=0.3, shear=0, border=(0, 0)):
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
     # targets = [cls, xyxy]
@@ -121,7 +121,7 @@ def random_affine(image, bboxes=(), degrees=10, translate=.1, scale=0.5, shear=0
     # Combined rotation matrix
     M = S @ T @ R  # ORDER IS IMPORTANT HERE!!
     if (border[0] != 0) or (border[1] != 0) or (M != np.eye(3)).any():  # image changed
-        image = cv2.warpAffine(image, M[:2], dsize=(width, height), flags=cv2.INTER_LINEAR, borderValue=(109, 115, 125))
+        image = cv2.warpAffine(image, M[:2], dsize=(width, height), flags=cv2.INTER_LINEAR, borderValue=tuple(cfgs.USED_MEANS_255[::-1]))
 
     # Transform label coordinates
     n = len(bboxes)
@@ -328,3 +328,98 @@ def skinMask(img):
         skin = cv2.morphologyEx(skin, cv2.MORPH_DILATE, kernel)
     res = img * np.expand_dims(skin, -1)
     return res
+
+
+def load_mosaic(img, bbox):
+    # loads images in a mosaic
+    labels4 = []
+    s = cfgs.INPUT_IMAGE_W // 2
+    yc, xc = [int(random.uniform(-x, 2 * s + x)) for x in
+              [-cfgs.INPUT_IMAGE_H // 4, -cfgs.INPUT_IMAGE_W // 4]]  # mosaic center x, y
+    for i in range(4):
+        # place img in img4
+        if i == 0:  # top left
+            img4 = np.ones((s * 2, s * 2, img.shape[2]), dtype=np.float32)
+            means = np.array(cfgs.USED_MEANS_255[::-1], np.float32).reshape((1, 1, 3))
+            img4 = img4 * means
+            img4 = img4.astype(np.uint8)
+            img, [bbox] = image_preprocess_mosaic(np.copy(img), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                                  np.copy(bbox))
+            h, w, _ = img.shape
+            x1a, y1a, x2a, y2a = max(xc - w, 0), max(yc - h, 0), xc, yc  # xmin, ymin, xmax, ymax (large image)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                    h + (y2a - y1a)) // 2  # xmin, ymin, xmax, ymax (small image)
+        elif i == 1:  # top right
+            img, bbox = load_random_img_label()
+            img, [bbox] = image_preprocess_mosaic(np.copy(img), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                                  np.copy([bbox]))
+            h, w, _ = img.shape
+            x1a, y1a, x2a, y2a = xc, max(yc - h, 0), min(xc + w, s * 2), yc
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                    h + (y2a - y1a)) // 2
+        elif i == 2:  # bottom left
+            img, bbox = load_random_img_label()
+            img, [bbox] = image_preprocess_mosaic(np.copy(img), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                                  np.copy([bbox]))
+            h, w, _ = img.shape
+            x1a, y1a, x2a, y2a = max(xc - w, 0), yc, xc, min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                    h + (y2a - y1a)) // 2
+        elif i == 3:  # bottom right
+            img, bbox = load_random_img_label()
+            img, [bbox] = image_preprocess_mosaic(np.copy(img), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W],
+                                                  np.copy([bbox]))
+            h, w, _ = img.shape
+            x1a, y1a, x2a, y2a = xc, yc, min(xc + w, s * 2), min(s * 2, yc + h)
+            x1b, y1b, x2b, y2b = (w - (x2a - x1a)) // 2, (h - (y2a - y1a)) // 2, (w + (x2a - x1a)) // 2, (
+                    h + (y2a - y1a)) // 2
+
+        img4[y1a:y2a, x1a:x2a] = img[y1b:y2b, x1b:x2b]  # img4[ymin:ymax, xmin:xmax]
+        padw = x1a - x1b
+        padh = y1a - y1b
+
+        # Labels
+        labels = bbox.copy()
+        if len(bbox) > 0:  # Normalized xywh to pixel xyxy format
+            labels[0] += padw
+            labels[1] += padh
+            labels[2] += padw
+            labels[3] += padh
+        labels[[0, 2]] = np.clip(labels[[0, 2]], x1a, x2a)
+        labels[[1, 3]] = np.clip(labels[[1, 3]], y1a, y2a)
+        if (labels[2] - labels[0]) * (labels[3] - labels[1]) < 0.5 * (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]):
+            labels[-1] = cfgs.NUM_CLASS
+        labels4.append(labels)
+    labels4 = np.array(labels4)
+    return img4, labels4
+
+
+def load_random_img_label():
+    with open(cfgs.TRAIN_DATA_FILE) as f_read:
+        read_lines = f_read.readlines()
+    length = len(read_lines)
+    index = random.randint(0, length - 1)
+    line = read_lines[index].split(' ')
+    img = cv2.imread(line[0])
+    bbox = [int(i) for i in line[1].split(',')]
+    return img, bbox
+
+
+def image_preprocess_mosaic(image, target_size, gt_boxes=None):
+    ih, iw = target_size
+    h, w, _ = image.shape
+    scale = min(iw / w, ih / h)
+    nw, nh = int(scale * w), int(scale * h)
+    image_resized = cv2.resize(image, (nw, nh))
+    means = np.array(cfgs.USED_MEANS_255[::-1], np.float32).reshape((1, 1, 3))
+    image_paded = np.ones((ih, iw, 3), dtype=np.float32)
+    image_paded = image_paded * means
+    dw, dh = (iw - nw) // 2, (ih - nh) // 2
+    image_paded[dh: nh + dh, dw: nw + dw, :] = image_resized
+
+    if gt_boxes is None:
+        return image_paded
+    else:
+        gt_boxes[:, [0, 2]] = gt_boxes[:, [0, 2]] * scale + dw
+        gt_boxes[:, [1, 3]] = gt_boxes[:, [1, 3]] * scale + dh
+        return image_paded, gt_boxes

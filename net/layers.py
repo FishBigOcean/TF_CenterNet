@@ -100,12 +100,15 @@ def route_group(input_layer, groups, group_id):
     return conv_group[group_id]
 
 
-def upsampling(inputs, method="deconv", output_dim=24):
+def upsampling(inputs, method="deconv", output_dim=24, out_size=None):
     assert method in ['resize', 'deconv', 'complex']
 
     if method == 'resize':
         input_shape = tf.shape(inputs)
-        output = tf.image.resize_nearest_neighbor(inputs, (input_shape[1] * 2, input_shape[2] * 2))
+        if out_size is not None:
+            output = tf.image.resize_nearest_neighbor(inputs, (out_size[1], out_size[2]))
+        else:
+            output = tf.image.resize_nearest_neighbor(inputs, (input_shape[1] * 2, input_shape[2] * 2))
 
     if method == 'deconv':
         numm_filter = inputs.shape.as_list()[-1]
@@ -185,3 +188,52 @@ def detect_module_conv(inputs, channel, kernel_size, is_training):
     context_up, context_down = context_module_conv(up, is_training)
     out = tf.concat([up, context_up, context_down], axis=-1)
     return out
+
+
+def BFP(in_channels, is_training):
+    c2, c3, c4, c5 = in_channels
+    channel = 24
+    p5 = _conv(c5, channel, [1, 1], is_training=is_training)
+
+    up_p5 = upsampling(p5, method='resize')
+    f_p5 = up_p5
+    reduce_dim_c4 = _conv(c4, channel, [1, 1], is_training=is_training)
+    f_p4 = reduce_dim_c4
+    p4 = up_p5 + reduce_dim_c4
+
+    up_p4 = upsampling(p4, method='resize')
+    reduce_dim_c3 = _conv(c3, channel, [1, 1], is_training=is_training)
+    f_p3 = tf.layers.max_pooling2d(reduce_dim_c3, 2, 2, padding='SAME')
+    p3 = up_p4 + reduce_dim_c3
+
+    up_p3 = upsampling(p3, method='resize')
+    reduce_dim_c2 = _conv(c2, channel, [1, 1], is_training=is_training)
+    f_p2 = tf.layers.max_pooling2d(reduce_dim_c2, 4, 4, padding='SAME')
+    p2 = 0.25 * (up_p3 + reduce_dim_c2)
+
+    bsf = 0.25 * (f_p2 + f_p3 + f_p4 + f_p5)
+    bsf = non_local(bsf, is_training)
+    bsf = upsampling(bsf, method='resize', out_size=tf.shape(p2))
+
+    p2 = p2 + bsf
+    return p2
+
+
+def non_local(inputs, is_training):
+    batchsize, height, width, channels = inputs.get_shape().as_list()
+    g = _conv(inputs, channels, [1, 1], 1, is_training=is_training)
+    phi = _conv(inputs, channels, [1, 1], 1, is_training=is_training)
+    theta = _conv(inputs, channels, [1, 1], 1, is_training=is_training)
+
+    g_x = tf.reshape(g, [batchsize, channels, -1])
+    g_x = tf.transpose(g_x, [0, 2, 1])
+
+    theta_x = tf.reshape(theta, [batchsize, channels, -1])
+    theta_x = tf.transpose(theta_x, [0, 2, 1])
+    phi_x = tf.reshape(phi, [batchsize, channels, -1])
+
+    f = tf.matmul(theta_x, phi_x)
+    f_softmax = tf.nn.softmax(f, -1)
+    y = tf.matmul(f_softmax, g_x)
+    y = tf.reshape(y, [batchsize, height, width, channels])
+    return y

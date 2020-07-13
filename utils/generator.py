@@ -21,7 +21,16 @@ def process_data(line, use_aug):
     labels = np.array([list(map(lambda x: int(float(x)), box.split(','))) for box in s[1:]])
     # image = skinMask(image)
     if use_aug:
-        if not cfgs.USE_ROTATE:
+        if cfgs.USE_ROTATE:
+            image, labels = random_affine(image, labels)
+            random_hsv(image)
+            image = random_grid_mask(image)
+        elif cfgs.USE_MOSAIC:
+            image, labels = load_mosaic(image, labels)
+            image, labels = random_affine(image, labels)
+            random_hsv(image)
+            image = random_grid_mask(image)
+        else:
             # image, labels = random_horizontal_flip(image, labels)
             image, labels = random_crop(image, labels)
             random_hsv(image)
@@ -29,10 +38,6 @@ def process_data(line, use_aug):
             image = random_grid_mask(image)
             # image = random_beauty_face(image)
             # image = random_color_distort(image)
-        else:
-            image, labels = random_affine(image, labels)
-            random_hsv(image)
-            image = random_grid_mask(image)
     image, labels = image_preprocess(np.copy(image), [cfgs.INPUT_IMAGE_H, cfgs.INPUT_IMAGE_W], np.copy(labels))
 
     output_h = cfgs.INPUT_IMAGE_H // cfgs.DOWN_RATIO
